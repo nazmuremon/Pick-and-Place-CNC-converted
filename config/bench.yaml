@@ -1,0 +1,202 @@
+# Test bench on the PC: Arduino Uno + CNC shield with Grbl 1.1h (3 axes, no A).
+# Used only by the bench tools (tools/bench.py and the tools that import it).
+# The real machine (Pico + grblHAL) does not use this file.
+
+serial:
+  port: null        # null = the first USB serial port
+  baud: 115200
+
+# Machine axis -> Grbl axis and sign (sign -1 flips the direction). Project convention:
+# +X = head to the right, +Y = head to the back (away from you), +Z = up.
+# The motors are not on the drivers the names say (found 2026-10-06 with the camera and the owner
+# watching). The owner chose to fix this here, in software, not the cables.
+axis_map:
+  X: {grbl: Y, sign: -1}   # Grbl +Y moves the head to the LEFT (owner saw it), so -1 makes +X = right
+  Y: {grbl: Z, sign: 1}    # Grbl +Z (the Z driver) moves the head to the BACK (owner saw it)
+  Z: {grbl: X, sign: -1}   # Grbl +X moves the camera down (camera check), so -1 makes +Z = up
+
+# Caps for every bench tool. There are no limit switches.
+limits:
+  max_feed: 1000     # mm/min. Lowered 2026-10-07 from 2000: the head is heavier (nozzle + servo) and the camera
+                     # grid run looked like lost steps. The 2000 speed test was with the old head: run it again.
+  max_step: 400     # mm, the largest single move. Moves go out as ONE smooth motion (no stop-and-go)
+  # Where the camera centre can go, in mm from the centre of the HOME label (+X right, +Y back).
+  # Measured by the owner 2026-10-06 by jogging to each end and stopping about 5 mm before it
+  # (tools/bed_test_run.py): X -94..56, Y -160..70 from the OLD HOME position. HOME then moved about
+  # +60 / +67 mm (onto the old slot-2 bar), so from the new HOME it is about the values below.
+  # Measured with --measure-reach on 2026-10-08. Valid only while HOME stays where it is.
+  # 2026-10-11: X right end +10 (the board corner was measured at X +5.6); Y from the bed survey of 16:14 (drove
+  # to -324.9 and back, HOME drift < 0.5 mm) and the back end found by the stalls (-19.4). Camera-centre values.
+  reach_from_home:
+    x: [-117.4, 10.0]
+    y: [-324.9, -19.4]
+  # The reach is "where the camera's picture centre can go", so it is wrong once the camera is moved on the head
+  # (2026-10-07: the camera was re-mounted, tilted ~25 deg). While true, the tools do not move by themselves
+  # (arrow jogs still work). tools/bed_test_run.py --measure-reach measures it again and sets this to false.
+  reach_stale: false        # 2026-10-08: the owner chose to test with the old reach (not measured since the camera
+                            # moved), watching the machine. Measure it with --measure-reach when there is time.
+
+# Finding the labels when the head's position is unknown (moved by hand, PC restarted), every run:
+# the head drives to the BACK (all labels sit in one row there) in short steps. After each step the new
+# picture must fit "moved" better than "did not move", or the head is blocked at an end: it stops.
+label_search:
+  step_mm: 10        # one step to the back
+  feed: 600          # mm/min, slower than normal: the head may get near the back end
+  margin: 0.05       # "moved" or "blocked" must fit the new picture this much better (correlation)
+  # Long bars along the move or a plain area: the picture cannot show the movement (run 2026-10-07,
+  # a false stop). After this many such steps in a row the search stops and asks.
+  max_unsure_steps: 5
+
+# tools/dry_run_bench.py: find the real parts in a slot's tape mark (cut tape, film off).
+# Measured 2026-10-06 on white paper tape, Xitech camera (~7.2 px/mm): the black top of a chip
+# resistor is 50-70 % darker than the paper around it, the tape holes and empty pockets only 15-35 %.
+# The metal ends of a part look like the pocket floor, so only the dark top is measured.
+# Light (ceramic) capacitors are NOT tested yet: they may not be dark enough.
+slot_parts:
+  dark: 0.30            # a pixel is "part" if it is this much darker than the tape around it. 0.40 lost the
+                        # light 100 nF parts (36-55 % darker, 2026-10-11); the holes are kept out by shape (min_aspect)
+  background_mm: 8      # the tape brightness is measured over this window
+  min_area_mm2: 0.5     # smaller dark spots are dirt or print: ignored
+  max_dark: 0.75        # darker than this (median) = an empty pocket over black tape, not a part
+  min_aspect: 1.25      # a part is at least this much longer than wide; a sprocket hole is round
+  min_length_mm: 1.5     # shorter dark spots are the tape's sprocket holes (1.5 mm round, 2026-10-11: picked at
+                        # as parts), not parts (0805 tops measure 2.3-2.7 mm)
+  max_length_mm: 7.0    # longer = not one part (tape end, a piece of tape): unclear
+  min_gap_mm: 0.5       # a part closer than this to another dark spot is unclear (never guess)
+  views_u_mm: [32, 62]  # camera stops along the tape mark, mm from the slot marker centre (zone 17-77)
+  recheck_mm: 2.5       # under the camera, the part must be found again within this distance (1.5 missed:
+                        # the overview measures parts up to ~2 mm off near the picture edge, 2026-10-11)
+  # The lens bends the picture edges: a part ~20 mm from the picture centre is measured up to ~1.5 mm
+  # off (run 2026-10-06 17:56: counted twice). Two sightings closer than this are the same part.
+  # Half the 4 mm pocket pitch: neighbours are never merged.
+  same_part_mm: 2.0
+
+# Nozzle servo (MG995, 270° version) and vacuum pump on the bench Uno (decision D18, 2026-10-07).
+# The Uno runs our Grbl build firmware/grbl-1.1h-servo ($I shows VER:1.1h.20261007): the spindle pin D11
+# (shield "Z+/Z-" signal pin) sends servo pulses. M3 S<us> = pulse width in microseconds, M5 = no pulses.
+# Grbl runs M3/M5/M8/M9 only after the moves before them. Pump relay on CoolEn (A3): M8 on, M9 off.
+# Valve (later) on A4: M7 on, M9 off. Grbl settings: $30=2500 (status shows the pulse), $32=0 (no laser mode).
+nozzle_servo:
+  firmware: "1.1h.20261007"   # the tools refuse servo commands on another Grbl build
+  min_us: 500                 # the firmware clamps to 500-2500 too
+  max_us: 2500
+  centre_us: 1500
+  settle_s: 1.0               # wait after each turn. A safe guess, NOT measured yet
+  approach_us: 200            # every angle is reached from this much shorter a pulse first: the gear play
+                              # always sits the same way (2026-10-11: ~20 deg apart from the two sides)
+pump:
+  start: M8                   # ("on"/"off" would be read as true/false by YAML)
+  stop: M9                    # NOTE: M9 stops flood AND mist: after venting the valve (later), send M8 again
+
+# The camera calibration (px per mm of head move) is refused if the X and Y moves are not at 90 deg in the
+# picture or their scale is far from the 10 mm marker's (a head that lost steps). 2 deg / 5 % for a straight camera.
+# Loosened 2026-10-07 for the TILTED head camera until tools/camera_rectify.py straightens its pictures
+# (measured on the tilted camera: 87.3 deg, scale 4.6 % from the marker).
+camera_check:
+  cal_move_mm: 4.0            # the calibration moves (left, front) when the camera does not move with Z: HOME sits low
+                              # in the picture near the nozzle's shadow, 8 mm pushed it out (2026-10-08)
+  max_axis_angle_error_deg: 5.0
+  max_scale_error: 0.10
+
+# tools/camera_square_check.py: is the head camera looking straight down? A 10 mm label near the picture
+# centre must look square. Good mount (2026-10-07 morning): sides within 1.6 %, corners 88.7-89.7 deg.
+# After the nozzle was mounted: sides 7-12 % apart, corners 81-87 deg, and the calibration refused it.
+camera_square:
+  max_side_spread_pct: 3.0    # longest minus shortest side, in % of the mean side
+  max_corner_error_deg: 2.0   # every corner within 90 +- this (the calibration also wants 90 +- 2 deg)
+  centre_radius_px: 80        # judge only a label this close to the picture centre (the lens bends the edges)
+  average_frames: 10          # corners averaged over this many frames (less jitter)
+
+# tools/camera_rectify.py: straighten the pictures of the TILTED head camera (2026-10-07: after the nozzle was
+# mounted it looks about 25 deg off vertical, and it can't be re-mounted). The head moves over a grid ONLY
+# towards the middle of the bed: to the front, and left or right towards the middle slots. limits.reach_from_home
+# is not used here: it was measured with the camera before it was moved. Result: config/camera_rectify.yaml.
+camera_rectify:
+  grid_x_mm: [0, 10, 20, 30, 40, 50, 60]   # head moves from the start, towards the middle of the slot row
+  grid_y_mm: [0, 4, 8, 12]                 # head moves from the start, to the FRONT (all labels sit in the back row)
+  frames: 6               # pictures averaged at each grid point
+  edge_px: 4              # a label closer than this to the picture edge is not used (it may be cut off)
+  max_rms_px: 1.0         # the fit must explain every label corner this well (corner noise is ~0.1-0.3 px)
+  check_spread_pct: 2.0   # straightened picture: each label's sides within this % (and all labels the same size)
+  check_corner_deg: 1.5   # straightened picture: each label corner within 90 +- this
+  z_return_px: 0.5        # back at Z0 the label must be where it was (else the camera mount moved: no height shift)
+  z_mm: 3.0               # Z goes UP this far and back down: camera height and height shift. 0 = skip
+  z_feed: 300             # mm/min
+
+# tools/nozzle_calibrate.py: where the nozzle tip is and which servo pulse gives which angle
+# (docs/08-calibration.md steps 7 and 8, D18). null = not known yet: the tool says which one it needs.
+# The results (spots, touch heights, offsets, servo table) go to config/nozzle_calibration.yaml.
+nozzle:
+  offset_guess_mm: null       # TBD: nozzle tip minus camera centre, [X, Y] mm (+X right, +Y back), with a ruler
+  od_mm: 0.72                 # outer diameter of the needle in use (mm): 22G (owner, 2026-10-07)
+  part_height_mm: null        # TBD: height of the test part for the servo table (datasheet), mm
+  press_mm: 0.3               # go this far below the touch height for a mark or a pick (spring nozzle, docs/08)
+  dwell_s: 0.5                # nozzle down time for a mark or a pick
+  release_s: 2.5              # after the pump stops, wait before lifting (no valve yet: the vacuum leaks away).
+                              # 1.0 was too short (2026-10-08: parts stayed on the needle). A guess: tune it
+  spacing_mm: 4.0             # distance between marks / placed parts on the paper and the tape
+  mark_dark: 0.25             # a mark is this much darker than the paper around it
+  pad_check: {enabled: false, search_mm: 1.5, agree_mm: 0.4}   # before each place the camera finds the part's two pads
+                              # and corrects the place by them (the board registration may be off)
+  pick_change_grey: 20.0      # a pick is good when the pocket changed this much (grey levels, mean, inside the
+                              # part's outline): part ~75, tape white ~160, black tape ~30 (2026-10-11)
+  mark_max_area: 8.0          # an ink dot may be up to this x the needle's area (ink spreads: 1.3 mm dots, 2026-10-11)
+  mark_pulses_us: [1500, 900, 1200, 1800, 2100, 1500, 1200, 1800]   # offset marks: servo positions (twice = repeat check)
+  table_pulses_us: [1500, 700, 1100, 1900, 2300]        # servo table: positions to measure (the first = no turn)
+  height_tol: 0.006           # the camera scale may change this much (0.6 %, about 0.4 mm of Z) since the touch
+                              # heights were set; more = Z moved (it slides when the power is off): set them again
+  pick_slot: 3
+  move_clearance_mm: 3.0      # moving height (m), and Z0, at least this far above the pick / place / paper heights.
+                              # Owner 2026-10-08: "while moving it should lift 3 mm" (was 4.5: docs/08 step 8,
+                              # tallest part on the board R9 2.5 mm + 2 mm; the B side is still bare)
+  camera_moves_with_z: false  # 2026-10-08: the labels keep their size when Z moves (Z sweep that morning; Z top vs the
+                              # pick height): the camera sits on the head, not on the Z slide. Z0 then comes from the
+                              # pick spot (nozzle tip on a part), not from the label size (D19 needs true)
+  home_view_mm: [-24.0, -20.5] # camera centre from HOME where HOME, slot 3 and slot 4 are in view (2026-10-08)
+  shadow_bottom_frac: 0.08    # the nozzle's shadow covers the bottom of the picture (middle): no label there
+  place_above_pick_mm: 1.9    # place height = pick spot + this: board 1.6 mm thick (docs/11) lying on the bars like the
+                              # tape, + 0.3 mm release gap (the part drops). A board on parts / spacers: measure it
+  jog_clearance_mm: 1.0       # the owner's own X / Y jogs (watching): tip at least this far above those heights
+  mounted: true               # a nozzle is on the head (2026-10-07): tools that go down blind (zoom_identify,
+                              # the dry run's dips) refuse or skip Z
+  after_check_mm: 1.5         # after a pick / place the camera looks for a part this close to the spot
+
+# tools/nozzle_calibrate.py keys z and b: Z measured with the camera. The camera's scale (px per mm of a label)
+# depends on its height: 1 / scale grows in a straight line with the height (pinhole camera).
+z_cal:
+  sweep_mm: [0, -1, -2, -3, -4, -2, 0]   # Z positions over HOME: down, then back up (shows play and repeat)
+  frames: 10                              # pictures averaged for each scale measurement
+  max_drift_mm: 6.0                       # Z moved more than this since the touch heights were set: set them again
+  block_height_mm: null                   # TBD: block for the steps/mm check (key b), measured with calipers.
+                                          # 3-6 mm (stacked PCBs) keeps the label in focus
+  block_repeats: 3                        # the block measurement is repeated and averaged
+  # tools/nozzle_calibrate.py: at every start (h) the camera is driven back to the remembered height (Z0),
+  # measured on the pick slot's label at the picture centre. First guesses, tune with the real machine:
+  label: slot_3                           # the label measured at the picture centre (HOME can't be centred)
+  restore_tol: 0.0006                     # scale may differ this much (0.06 %, about 0.05 mm of Z) when done
+  restore_rounds: 4                       # measure - move rounds before it gives up
+  restore_max_down_mm: 1.0                # Z goes DOWN by itself at most this much (Z slides down, not up)
+
+# tools/dry_run_bench.py: like the nozzle will, the head goes down at every pick and place and back up
+# to Z0 before it moves on (owner, 2026-10-06). The camera looks only at Z0, where it was calibrated.
+dry_run:
+  z_dip_mm: 2.0     # down this much, then up the same; 0 = no Z moves. At most 4 (zoom test: Z 0 to -4 is safe)
+  z_feed: 300       # mm/min. Grbl's max rate for the motor that moves Z on this bench is 500 ($110)
+
+# tools/zoom_identify.py: move Z down to zoom in, identify parts live.
+zoom:
+  step_mm: 2.0
+  max_down_mm: 20.0   # safety cap for this test, NOT a measured clearance. Watch the head.
+  max_up_mm: 5.0
+  dwell_s: 2.5        # time at each zoom level
+  feed: 150           # mm/min
+  outside_mm: 12      # also look for parts this far outside the marker rectangle
+  min_markers: 2      # with 1 marker the scale is stretched across the image: sizes far from it are wrong
+  max_fps: 10         # frames processed per second (each frame is heavy: keeps the CPU load low)
+
+# Head camera settings for the light on the bed (ui/engine.py job_auto_exposure)
+camera:
+  manual_mode: 1        # V4L2 auto exposure off (1 = manual): the brightness must not change
+  exposure: 84        # set by the page's Auto exposure 2026-10-11 (brightest 192, white 0.0 %)
+  target_p95: 200     # the brightest 5 % of the picture should sit here (white = 255)
+  max_white_pct: 3    # at most this much pure white (the lamp's glare)

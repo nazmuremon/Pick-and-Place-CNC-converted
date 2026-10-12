@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# results of the bench tools (pictures, reports, machine state)
+logs/
+
+# local copies that are not part of the project
+config/machine.yaml
+firmware/grbl-1.1h-servo/.git-upstream/
+firmware/grbl-1.1h-servo/build/

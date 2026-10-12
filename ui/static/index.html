@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pick and place</title>
+<link rel="stylesheet" href="/static/style.css?v=20261011d">
+</head>
+<body>
+<header>
+  <h1>Pick and place</h1>
+  <div id="chips"></div>
+  <button id="stop" class="stop" title="Space">STOP</button>
+  <button id="quit" class="small">Quit</button>
+</header>
+<div id="lockbox" class="banner hidden"><span id="locked"></span>
+  <button id="unlock" class="big">The nozzle is clear: unlock (Home)</button></div>
+<main>
+  <section id="left">
+    <div id="videobox">
+      <img id="video" src="/video" alt="live camera">
+      <div class="hint">Click the picture: that spot goes to the red cross</div>
+    </div>
+    <div id="msg"></div>
+    <div id="mapbox">
+      <div class="maphead"><b>Bed map</b> <span class="note">click = the camera goes there &nbsp;
+        <span class="lg cam">camera</span> <span class="lg noz">nozzle</span> <span class="lg todo">to place</span>
+        <span class="lg done">placed</span></span> <span id="mapxy" class="note"></span></div>
+      <canvas id="map" width="640" height="560"></canvas>
+    </div>
+    <ul id="events"></ul>
+  </section>
+
+  <section id="right">
+    <nav id="tabs">
+      <button data-tab="machine" class="on">1 Machine</button>
+      <button data-tab="setup">2 Setup</button>
+      <button data-tab="feeders">3 Feeders</button>
+      <button data-tab="job">4 Job</button>
+    </nav>
+
+    <div id="tab-machine" class="tab">
+      <div class="row"><button data-act="home" class="big">Home (find HOME, check the camera height)</button></div>
+      <div class="pos">X <b id="px">-</b> &nbsp; Y <b id="py">-</b> &nbsp; Z <b id="pz">-</b> mm</div>
+      <h3>Move X / Y</h3>
+      <div class="jog">
+        <span></span><button data-jog="0,1">&uarr; back</button><span></span>
+        <button data-jog="-1,0">&larr; left</button><span class="step">step
+          <select id="step"><option>0.1</option><option>1</option><option selected>5</option><option>10</option><option>30</option></select> mm</span><button data-jog="1,0">right &rarr;</button>
+        <span></span><button data-jog="0,-1">&darr; front</button><span></span>
+      </div>
+      <h3>Move Z</h3>
+      <div class="row">
+        <button data-z="1">Z up 1</button><button data-z="0.1">Z up 0.1</button>
+        <button data-z="-0.1">Z down 0.1</button><button data-z="-1">Z down 1</button>
+      </div>
+      <h3>Nozzle turn (servo) &nbsp; <b id="turn">0</b> deg</h3>
+      <div class="row">
+        <button data-turn="-90">-90</button><button data-turn="-10">-10</button><button data-turn="-1">-1</button>
+        <button id="turn0">0</button>
+        <button data-turn="1">+1</button><button data-turn="10">+10</button><button data-turn="90">+90</button>
+      </div>
+      <h3>Camera</h3>
+      <div class="row"><button data-act="exposure">Auto exposure (after the light changed)</button></div>
+      <h3>Pump</h3>
+      <div class="row"><button data-act="pump" id="pumpbtn">Pump on / off</button></div>
+      <p class="note">Keys: arrows = move X / Y, [ ] = Z 0.1, { } = Z 1, , . = turn 10 deg, h = Home,
+        space = STOP. Mouse: click the picture or the map = go there.</p>
+    </div>
+
+    <div id="tab-setup" class="tab hidden">
+      <div class="card" id="c-survey">
+        <h3><span class="tick"></span>0. Bed survey (all labels, camera high)</h3>
+        <p>Z at the TOP (a wide view), HOME in the picture. The head goes only to the front and to the left, in short
+           steps checked by the camera, and to the front only until PCB 1 or PCB 2 shows. It measures HOME, the
+           slots and PCB 1-4, puts the board area between the PCB labels, and saves the reach it drove.</p>
+        <div class="row"><button data-act="survey" class="big">Start the bed survey</button></div>
+      </div>
+      <div class="card" id="c-reach">
+        <h3><span class="tick"></span>1. Reach (the 4 ends)</h3>
+        <p>The machine has no limit switches. Press Start, drive slowly to the left, right, front and back ends
+           (stop about 5 mm before each end), then Save.</p>
+        <div class="row"><button data-act="reach_start">Start measuring</button><button data-act="reach_save">Save reach</button><button data-act="reach_cancel">Cancel</button></div>
+        <div class="val" id="v-reach"></div>
+      </div>
+      <div class="card" id="c-cam">
+        <h3><span class="tick"></span>2. Camera height (Z0)</h3>
+        <p>Move Z until the nozzle tip is about 5 mm above the parts and the board. Then press the button
+           (once, the first time). Every height below is kept from this height, and Home brings Z back to it.</p>
+        <div class="row"><button id="camheight">This is the camera height</button></div>
+        <div class="val" id="v-cam"></div>
+      </div>
+      <div class="card" id="c-heights">
+        <h3><span class="tick"></span>3. Heights</h3>
+        <table class="heights">
+          <tr><td>Pick</td><td>the nozzle tip just touches a part in its slot</td><td id="h-part">-</td><td><button data-height="part">Set</button></td></tr>
+          <tr><td>Place</td><td>pump ON, a part held: the part just touches the board</td><td id="h-place">-</td><td><button data-height="place">Set</button></td></tr>
+          <tr><td>Moving</td><td>parts are carried at this height (4.5 mm above pick / place)</td><td id="h-move">-</td><td><button data-height="move">Set</button></td></tr>
+          <tr><td colspan="3">The nozzle tip is ON a part in a slot right now (pick height)?</td><td><button data-act="pick_here">Use as PICK</button></td></tr>
+          <tr><td>Paper</td><td>(only for the offset marks job) the tip touches the paper</td><td id="h-paper">-</td><td><button data-height="paper">Set</button></td></tr>
+        </table>
+      </div>
+      <div class="card" id="c-offset">
+        <h3><span class="tick"></span>4. Camera to nozzle</h3>
+        <p>a) Click a <b>part</b> in a slot (it goes to the red cross), press the button, then move the
+           <b>nozzle tip</b> exactly over that part and press the button again = PICK offset.<br>
+           b) The same on one of the board's <b>holes</b> = PLACE offset.</p>
+        <div class="row"><button data-act="offset" id="offsetbtn">1. Mark what is at the red cross</button></div>
+        <div class="row"><button data-act="nozzle_pick">Calibrate the nozzle by picking (tries offsets on a part)</button></div>
+        <div class="val" id="v-offset"></div>
+      </div>
+      <div class="card" id="c-land">
+        <h3><span class="tick"></span>4b. Where the nozzle lands (best way)</h3>
+        <p>PICK: put the red cross over soft tape or a part in a slot, press "Land at pick height": the nozzle comes
+           down there and leaves a mark. PLACE: pump ON with a part held, red cross over the board, press "Land at
+           place height": the part is put down. Then CLICK the centre of the mark / the part in the picture.</p>
+        <div class="row"><button data-land="part">Land at pick height</button><button data-land="place">Land at place height</button>
+          <button data-act="land_cancel">Cancel</button></div>
+        <div class="val" id="v-land"></div>
+      </div>
+      <div class="card" id="c-marks">
+        <h3><span class="tick"></span>4c. Nozzle marks with ink (tip at every servo angle, runout)</h3>
+        <p>An ink spot (paper wet from the stamp pad) and a clean white paper, both taped flat near slot 3.
+           1) Click the ink spot in the picture, press "Ink spot here". 2) The same for a clean place on the paper.
+           3) Jog the needle down until it just touches the paper: Setup 3, Paper, Set. 4) Make the marks.</p>
+        <div class="row"><button data-spot="ink">Ink spot here</button><button data-spot="paper">Paper here</button>
+          <button data-act="marks" class="go">Make the marks</button></div>
+      </div>
+      <div class="card" id="c-pointer">
+        <h3><span class="tick"></span>4d. Nozzle pointer by eye (precise)</h3>
+        <p>1) Press "Target: click it", then CLICK the centre of a part in the live picture (a magenta cross shows it).
+           2) "Nozzle over the target": the needle comes down to 0.5 mm above it. 3) LOOK at the needle and nudge it with the fine steps
+           until it is exactly over the target (Z +-0.1 on the Machine tab helps to see). 4) Save.</p>
+        <div class="row"><button data-act="pointer_target">Target: click it</button>
+          <button data-act="pointer_go" class="go">Nozzle over the target</button></div>
+        <div class="jog">
+          <span></span><button data-nudge="0,1">&uarr; back</button><span></span>
+          <button data-nudge="-1,0">&larr; left</button><span class="step">step
+            <select id="nudge"><option>0.02</option><option selected>0.05</option><option>0.1</option><option>0.2</option></select> mm</span>
+          <button data-nudge="1,0">right &rarr;</button>
+          <span></span><button data-nudge="0,-1">&darr; front</button><span></span>
+        </div>
+        <div class="row"><button data-z="0.1">Z up 0.1</button><button data-z="-0.1">Z down 0.1</button>
+          <button data-act="pointer_save" class="go">Save: the needle is on the target</button>
+          <button data-act="pointer_cancel">Cancel</button></div>
+      </div>
+      <div class="card" id="c-board">
+        <h3><span class="tick"></span>5. Board (4 corner holes)</h3>
+        <div class="row">
+          <label>Side up <select id="side"><option>B</option><option>F</option></select></label>
+          <label>KiCad top edge at the <select id="top"><option>front</option><option>back</option></select></label>
+          <button id="sidebtn">Apply</button>
+        </div>
+        <table class="corners">
+          <tr><td>H1</td><td><button data-corner-go="H1">Go</button></td><td><button data-corner-set="H1">Set</button></td><td id="cs-H1"></td></tr>
+          <tr><td>H2</td><td><button data-corner-go="H2">Go</button></td><td><button data-corner-set="H2">Set</button></td><td id="cs-H2"></td></tr>
+          <tr><td>H3</td><td><button data-corner-go="H3">Go</button></td><td><button data-corner-set="H3">Set</button></td><td id="cs-H3"></td></tr>
+          <tr><td>H4</td><td><button data-corner-go="H4">Go</button></td><td><button data-corner-set="H4">Set</button></td><td id="cs-H4"></td></tr>
+        </table>
+        <p class="note">Go = the camera goes where the hole should be. Click the hole's centre in the picture (or
+           Auto-centre), then Set. With 3 or 4 holes set: Fit.</p>
+        <div class="row"><button data-act="corner_centre">Auto-centre on the hole</button><button data-act="board_fit">Fit board</button><button data-act="board_auto">Auto-find all holes</button></div>
+        <div class="val" id="v-board"></div>
+      </div>
+    </div>
+
+    <div id="tab-feeders" class="tab hidden">
+      <p>Which component line is in which slot. The camera can't read values: what you choose here must be
+         what you put in the slot. Board side: <b id="f-side"></b></p>
+      <table id="slots"></table>
+      <details><summary>Placed by hand for now</summary><ul id="manual"></ul></details>
+    </div>
+
+    <div id="tab-job" class="tab hidden">
+      <div class="row">
+        <label><input type="radio" name="mode" value="dry" checked> Dry run (camera only, no nozzle)</label>
+        <label><input type="radio" name="mode" value="real"> REAL pick and place</label>
+      </div>
+      <div class="row">
+        <button id="runbtn" class="big go">Start</button>
+        <button id="onebtn" class="go">REAL: place ONE part</button>
+        <button id="pausebtn">Pause</button><button id="resumebtn">Resume</button>
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+      <div class="val" id="v-job"></div>
+      <div class="row"><button id="newboard" class="small">New board (forget the parts placed)</button></div>
+      <h3>Last pictures</h3>
+      <div id="pics"></div>
+    </div>
+  </section>
+</main>
+<script src="/static/app.js?v=20261011d"></script>
+</body>
+</html>

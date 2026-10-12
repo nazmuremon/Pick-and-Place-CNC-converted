@@ -1,0 +1,503 @@
+<title>Pick-and-Place Bench Wiring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one reading column; the schematic gets the full width and scrolls sideways on phones. */
+  :root {
+    --bg: #eef2f0;          /* schematic paper, faint green-grey */
+    --panel: #ffffff;
+    --fg: #17201c;
+    --muted: #5b6862;
+    --line: #9aa8a1;
+    --rule: #d3dbd7;
+    --accent: #0f6e6a;      /* teal: headings, links */
+    --warn: #a3450c;
+    --warn-bg: #fff2e8;
+    --w12: #c62828;         /* +12 V pump supply */
+    --w6: #b86e00;          /* +5.0 V servo and relay supply */
+    --w5: #8e24aa;          /* +5 V logic */
+    --wsig: #1565c0;        /* signals */
+    --wgnd: #17201c;        /* ground */
+    --display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+    --sans: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1513; --panel: #17201d; --fg: #e2e9e5; --muted: #9aaaa3; --line: #4f5d57; --rule: #2a3531;
+      --accent: #5fc9c2; --warn: #ffab70; --warn-bg: #2d1d12;
+      --w12: #ff6b6b; --w6: #ffb547; --w5: #d48ae6; --wsig: #64b5f6; --wgnd: #e2e9e5;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1513; --panel: #17201d; --fg: #e2e9e5; --muted: #9aaaa3; --line: #4f5d57; --rule: #2a3531;
+    --accent: #5fc9c2; --warn: #ffab70; --warn-bg: #2d1d12;
+    --w12: #ff6b6b; --w6: #ffb547; --w5: #d48ae6; --wsig: #64b5f6; --wgnd: #e2e9e5;
+    color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--fg); font: 400 16px/1.55 var(--sans); }
+  .page { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 36px; }
+  header { display: grid; gap: 8px; max-width: 70ch; }
+  .eyebrow { font: 500 12px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h1 { font: 700 clamp(28px, 4.2vw, 42px)/1.1 var(--display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+  h2 { font: 700 22px/1.2 var(--display); margin: 0 0 12px; text-wrap: balance; }
+  p { margin: 0; }
+  .lede { color: var(--muted); max-width: 68ch; }
+  code, .mono { font-family: var(--mono); font-size: .92em; }
+
+  figure { margin: 0; display: grid; gap: 14px; }
+  .scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px; }
+  .scroll svg { display: block; width: 100%; min-width: 860px; height: auto; }
+  figcaption { color: var(--muted); font-size: 14px; max-width: 80ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 14px; padding: 0; margin: 0; list-style: none; }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .sw { width: 28px; height: 0; border-top: 3px solid; }
+  .sw.dash { border-top-style: dashed; }
+
+  /* schematic */
+  .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+  .box-later { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .w { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .w12 { stroke: var(--w12); } .w6 { stroke: var(--w6); } .w5 { stroke: var(--w5); }
+  .wsig { stroke: var(--wsig); } .wgnd { stroke: var(--wgnd); }
+  .wusb { stroke: var(--muted); stroke-dasharray: 7 5; stroke-width: 2; fill: none; }
+  .wlater { stroke: var(--wsig); stroke-dasharray: 6 5; }
+  .pin { stroke: var(--line); stroke-width: 1.2; }
+  .p12 { fill: var(--w12); } .p6 { fill: var(--w6); } .p5 { fill: var(--w5); } .psig { fill: var(--wsig); }
+  .pgnd { fill: var(--wgnd); } .pfree { fill: var(--panel); }
+  .dot { fill: var(--fg); }
+  .sym { fill: none; stroke: var(--fg); stroke-width: 2; }
+  .symfill { fill: var(--fg); stroke: none; }
+  .tt { font: 700 15px var(--display); fill: var(--fg); }
+  .t { font: 500 12.5px var(--sans); fill: var(--fg); }
+  .tm { font: 400 12px var(--sans); fill: var(--muted); }
+  .tp { font: 500 12px var(--mono); fill: var(--fg); }
+  .tw { font: 600 12px var(--sans); fill: var(--warn); }
+  .tc { font: 500 12px var(--mono); fill: var(--wsig); }
+  .warnbox { fill: var(--warn-bg); stroke: var(--warn); stroke-width: 1.2; }
+
+  .scroll.real { padding: 0; }
+  .scroll.real svg { min-width: 900px; }
+  .callouts { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .callouts li { display: flex; gap: 10px; align-items: baseline; }
+  .num { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+         color: #fff; font: 700 12px var(--sans); }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 36px; }
+  .cols > * { min-width: 0; }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--rule); }
+  th { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  tr.no td { color: var(--warn); }
+  ol, ul { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+  li::marker { color: var(--accent); font-weight: 600; }
+  .note { border-left: 3px solid var(--warn); background: var(--warn-bg); padding: 12px 14px; border-radius: 0 6px 6px 0; }
+  .tbd { font: 600 12px var(--mono); color: var(--warn); }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">HT5023 pick and place · test bench · 2026-10-07</div>
+    <h1>Bench wiring: vacuum pump and nozzle servo</h1>
+    <p class="lede">Everything runs from the one Arduino Uno with the Protoneer CNC Shield V3.00. The Uno runs our Grbl build (<code>$I</code> shows <code>1.1h.20261007</code>). Its spindle pin D11 sends the servo pulses: <code>M3 S1500</code> means a 1500&nbsp;µs pulse. The pump relay sits on the coolant pin: <code>M8</code> on, <code>M9</code> off. Grbl runs both only after the moves before them have finished. One buck converter set to 5.0&nbsp;V feeds the MG995 270° servo and the relay module, so nothing takes power from the Uno; its ground is joined to the shield's.</p>
+  </header>
+
+  <figure>
+    <h2 style="margin:0">On the board</h2>
+    <div class="scroll real">
+      <svg viewBox="0 0 1180 640" role="img" aria-label="Pictorial wiring on the CNC shield V3.00. In the shield's right-hand header block, the Z+ row signal pin goes to the MG995 servo's orange wire, the CoolEn row signal pin goes to the relay module's IN pin, and the CoolEn row GND pin at the board edge goes to the common ground. A buck converter set to 5.0 V feeds the servo and the relay module. The pump supply feeds the buck converter, and through a fuse the relay's COM terminal; the relay's NO terminal goes to the pump plus, and the pump minus back to the supply, with a diode across the pump.">
+        <rect x="0" y="0" width="1180" height="640" fill="#eceee9"/>
+
+        <!-- Arduino Uno under the CNC shield -->
+        <rect x="24" y="214" width="318" height="250" rx="8" fill="#1f6fa8"/>
+        <rect x="10" y="232" width="46" height="38" rx="3" fill="#c9ced3" stroke="#7d858c"/>
+        <text x="12" y="226" font-size="11" fill="#22303a" font-family="IBM Plex Sans, sans-serif">USB</text>
+        <rect x="34" y="200" width="318" height="250" rx="8" fill="#b4231c" stroke="#7d1510" stroke-width="2"/>
+        <text x="150" y="438" font-size="15" font-weight="700" fill="#fff" font-family="IBM Plex Sans Condensed, sans-serif">CNC SHIELD</text>
+        <rect x="52" y="214" width="62" height="36" rx="3" fill="#1d5fb8" stroke="#0e3a73"/>
+        <circle cx="68" cy="232" r="9" fill="#d5d9dd" stroke="#555"/><line x1="62" y1="232" x2="74" y2="232" stroke="#555" stroke-width="2"/>
+        <circle cx="98" cy="232" r="9" fill="#d5d9dd" stroke="#555"/><line x1="92" y1="232" x2="104" y2="232" stroke="#555" stroke-width="2"/>
+        <text x="58" y="266" font-size="11" fill="#fff" font-family="IBM Plex Sans, sans-serif">12–36V  + −</text>
+        <g fill="#2a2a2a" stroke="#d9b43a" stroke-width="1.5">
+          <rect x="130" y="222" width="54" height="84" rx="3"/><rect x="200" y="222" width="54" height="84" rx="3"/>
+          <rect x="130" y="322" width="54" height="84" rx="3"/><rect x="200" y="322" width="54" height="84" rx="3"/>
+        </g>
+        <text x="132" y="318" font-size="11" fill="#fff" font-family="IBM Plex Sans, sans-serif">driver sockets X Y Z A</text>
+        <!-- the header block on the overview -->
+        <g>
+          <rect x="300" y="210" width="44" height="232" fill="#8d1a14"/>
+          <g fill="#f4f4f4"><rect x="306" y="216" width="8" height="216"/></g>
+          <g fill="#1b1b1b"><rect x="326" y="216" width="8" height="216"/></g>
+        </g>
+        <rect x="294" y="204" width="56" height="244" fill="none" stroke="#e8a317" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <line x1="350" y1="204" x2="388" y2="96" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <line x1="350" y1="448" x2="388" y2="596" stroke="#e8a317" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <text x="40" y="186" font-size="13" font-weight="600" fill="#22303a" font-family="IBM Plex Sans, sans-serif">Arduino Uno + CNC Shield V3.00, from above</text>
+
+        <!-- zoom of the header block -->
+        <rect x="388" y="96" width="168" height="500" rx="8" fill="#a31f18" stroke="#e8a317" stroke-width="2.5"/>
+        <text x="472" y="80" font-size="13" font-weight="600" fill="#22303a" text-anchor="middle" font-family="IBM Plex Sans, sans-serif">Header block, zoomed</text>
+        <g font-family="IBM Plex Mono, monospace" font-size="12" fill="#fff" text-anchor="end">
+          <text x="476" y="132">Z+</text><text x="476" y="167">Z−</text><text x="476" y="202">Y+</text><text x="476" y="237">Y−</text>
+          <text x="476" y="272">X+</text><text x="476" y="307">X−</text><text x="476" y="342">SpnEn</text><text x="476" y="377">SpnDir</text>
+          <text x="476" y="412">CoolEn</text><text x="476" y="447">Abort</text><text x="476" y="482">Hold</text><text x="476" y="517">Resume</text>
+          <text x="476" y="552">E-STOP</text>
+        </g>
+        <g stroke="#888" stroke-width="1">
+          <g fill="#f7f7f7">
+            <rect x="486" y="121" width="14" height="14"/><rect x="486" y="156" width="14" height="14"/><rect x="486" y="191" width="14" height="14"/>
+            <rect x="486" y="226" width="14" height="14"/><rect x="486" y="261" width="14" height="14"/><rect x="486" y="296" width="14" height="14"/>
+            <rect x="486" y="331" width="14" height="14"/><rect x="486" y="366" width="14" height="14"/><rect x="486" y="401" width="14" height="14"/>
+            <rect x="486" y="436" width="14" height="14"/><rect x="486" y="471" width="14" height="14"/><rect x="486" y="506" width="14" height="14"/>
+            <rect x="486" y="541" width="14" height="14"/>
+          </g>
+          <g fill="#1b1b1b">
+            <rect x="520" y="121" width="14" height="14"/><rect x="520" y="156" width="14" height="14"/><rect x="520" y="191" width="14" height="14"/>
+            <rect x="520" y="226" width="14" height="14"/><rect x="520" y="261" width="14" height="14"/><rect x="520" y="296" width="14" height="14"/>
+            <rect x="520" y="331" width="14" height="14"/><rect x="520" y="366" width="14" height="14"/><rect x="520" y="401" width="14" height="14"/>
+            <rect x="520" y="436" width="14" height="14"/><rect x="520" y="471" width="14" height="14"/><rect x="520" y="506" width="14" height="14"/>
+            <rect x="520" y="541" width="14" height="14"/>
+          </g>
+        </g>
+        <text x="493" y="572" font-size="10" fill="#fde7c2" text-anchor="middle" font-family="IBM Plex Mono, monospace">signal</text>
+        <text x="527" y="572" font-size="10" fill="#fde7c2" text-anchor="middle" font-family="IBM Plex Mono, monospace">GND</text>
+        <text x="527" y="588" font-size="10" fill="#fde7c2" text-anchor="middle" font-family="IBM Plex Sans, sans-serif">edge →</text>
+        <!-- the three pins in use -->
+        <rect x="482" y="117" width="22" height="22" fill="none" stroke="#f28c28" stroke-width="3"/>
+        <rect x="482" y="397" width="22" height="22" fill="none" stroke="#1e6fd9" stroke-width="3"/>
+        <rect x="516" y="397" width="22" height="22" fill="none" stroke="#111" stroke-width="3"/>
+        <g font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="700" text-anchor="middle">
+          <circle cx="400" cy="128" r="9" fill="#f28c28"/><text x="400" y="132" fill="#fff">1</text>
+          <circle cx="400" cy="408" r="9" fill="#1e6fd9"/><text x="400" y="412" fill="#fff">2</text>
+          <circle cx="545" cy="388" r="9" fill="#111"/><text x="545" y="392" fill="#fff">3</text>
+        </g>
+
+        <!-- wires: servo signal (1) -->
+        <path d="M740 92 H493 V121" fill="none" stroke="#f28c28" stroke-width="4" stroke-linejoin="round"/>
+        <!-- wires: 5.0 V rail -->
+        <path d="M740 105 H626 V222 H650" fill="none" stroke="#d62828" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M626 222 V400 H650" fill="none" stroke="#d62828" stroke-width="4" stroke-linejoin="round"/>
+        <!-- wires: ground rail (servo brown, buck OUT-, relay GND, shield GND 3) -->
+        <path d="M740 118 H633 a7 7 0 0 0 -14 0 H612 V266 H650" fill="none" stroke="#6b3f17" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M612 266 V428 H650" fill="none" stroke="#1b1b1b" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M534 408 H612" fill="none" stroke="#1b1b1b" stroke-width="4"/>
+        <!-- wires: relay IN (2) -->
+        <path d="M493 415 V424 H598 V456 H650" fill="none" stroke="#1e6fd9" stroke-width="4" stroke-linejoin="round"/>
+        <g fill="#111"><circle cx="626" cy="222" r="5"/><circle cx="612" cy="266" r="5"/><circle cx="612" cy="408" r="5"/></g>
+        <!-- 10 kΩ from IN to GND at the relay header -->
+        <circle cx="638" cy="428" r="4" fill="#111"/><circle cx="638" cy="456" r="4" fill="#111"/>
+        <rect x="633" y="433" width="10" height="18" rx="3" fill="#d9c49a" stroke="#6b5a3a"/>
+        <g stroke="#6b5a3a" stroke-width="2"><line x1="633" y1="437" x2="643" y2="437"/><line x1="633" y1="442" x2="643" y2="442"/><line x1="633" y1="447" x2="643" y2="447"/></g>
+        <text x="604" y="478" font-size="11" fill="#22303a" font-family="IBM Plex Sans, sans-serif">10 kΩ IN→GND</text>
+        <!-- 1000 µF across the 5.0 V output -->
+        <circle cx="640" cy="222" r="4" fill="#111"/><circle cx="640" cy="266" r="4" fill="#111"/>
+        <rect x="632" y="230" width="16" height="28" rx="3" fill="#1f3c88" stroke="#0d1f4d"/>
+        <rect x="642" y="230" width="4" height="28" fill="#c9d3ef"/>
+        <text x="604" y="248" font-size="11" fill="#22303a" text-anchor="end" font-family="IBM Plex Sans, sans-serif">1000 µF →</text>
+
+        <!-- servo plug and MG995 -->
+        <rect x="740" y="84" width="22" height="42" rx="3" fill="#1b1b1b"/>
+        <path d="M762 92 C810 92 830 96 880 96" fill="none" stroke="#f28c28" stroke-width="4"/>
+        <path d="M762 105 C810 105 830 105 880 105" fill="none" stroke="#d62828" stroke-width="4"/>
+        <path d="M762 118 C810 118 830 114 880 114" fill="none" stroke="#6b3f17" stroke-width="4"/>
+        <rect x="860" y="86" width="196" height="38" rx="4" fill="#2b2b2b"/>
+        <rect x="880" y="62" width="150" height="86" rx="6" fill="#151515"/>
+        <circle cx="922" cy="105" r="18" fill="#3a3a3a"/>
+        <path d="M922 77 V133 M894 105 H950" stroke="#f2f2f2" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="922" cy="105" r="6" fill="#9aa2a8" stroke="#555"/>
+        <text x="952" y="98" font-size="13" font-weight="700" fill="#fff" font-family="IBM Plex Sans Condensed, sans-serif">MG995</text>
+        <text x="952" y="116" font-size="11" fill="#cfcfcf" font-family="IBM Plex Sans, sans-serif">270° · nozzle</text>
+        <text x="770" y="78" font-size="11" fill="#22303a" font-family="IBM Plex Sans, sans-serif">orange · red · brown</text>
+
+        <!-- buck converter -->
+        <rect x="650" y="196" width="150" height="94" rx="5" fill="#1d4f91" stroke="#0e2d56"/>
+        <rect x="668" y="206" width="22" height="16" fill="#2e6fd0" stroke="#0e2d56"/><circle cx="672" cy="214" r="3" fill="#d6b35a"/>
+        <rect x="708" y="222" width="34" height="34" rx="3" fill="#222"/>
+        <text x="662" y="276" font-size="11" fill="#fff" font-family="IBM Plex Sans, sans-serif">BUCK · set 5.0 V</text>
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#fff">
+          <text x="655" y="218">+</text><text x="655" y="262">−</text><text x="786" y="218">−</text><text x="786" y="262">+</text>
+        </g>
+        <text x="660" y="190" font-size="10" fill="#22303a" font-family="IBM Plex Mono, monospace">OUT</text>
+        <text x="770" y="190" font-size="10" fill="#22303a" font-family="IBM Plex Mono, monospace">IN</text>
+
+        <!-- relay module -->
+        <rect x="650" y="380" width="180" height="116" rx="5" fill="#1d4f91" stroke="#0e2d56"/>
+        <rect x="700" y="392" width="80" height="66" rx="3" fill="#2f6fd6" stroke="#123c80"/>
+        <text x="740" y="420" font-size="11" fill="#fff" text-anchor="middle" font-family="IBM Plex Sans, sans-serif">5 V relay</text>
+        <text x="740" y="436" font-size="10" fill="#dce7fb" text-anchor="middle" font-family="IBM Plex Sans, sans-serif">active-HIGH</text>
+        <circle cx="690" cy="482" r="4" fill="#ff5a4f"/>
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#fff">
+          <text x="656" y="404">VCC</text><text x="656" y="432">GND</text><text x="656" y="460">IN</text>
+        </g>
+        <rect x="806" y="388" width="34" height="98" rx="3" fill="#19a05a" stroke="#0b5a31"/>
+        <g fill="#d5d9dd" stroke="#555"><circle cx="823" cy="404" r="8"/><circle cx="823" cy="436" r="8"/><circle cx="823" cy="468" r="8"/></g>
+        <g font-family="IBM Plex Mono, monospace" font-size="9" fill="#fff" text-anchor="end">
+          <text x="802" y="407">COM</text><text x="802" y="439">NO</text><text x="802" y="471">NC</text>
+        </g>
+
+        <!-- pump supply -->
+        <rect x="930" y="200" width="220" height="130" rx="6" fill="#9aa3a8" stroke="#5e666b"/>
+        <g stroke="#7c858a" stroke-width="3"><line x1="1010" y1="216" x2="1010" y2="300"/><line x1="1026" y1="216" x2="1026" y2="300"/><line x1="1042" y1="216" x2="1042" y2="300"/><line x1="1058" y1="216" x2="1058" y2="300"/></g>
+        <text x="1080" y="250" font-size="13" font-weight="700" fill="#22303a" font-family="IBM Plex Sans Condensed, sans-serif">Pump</text>
+        <text x="1080" y="266" font-size="13" font-weight="700" fill="#22303a" font-family="IBM Plex Sans Condensed, sans-serif">supply</text>
+        <text x="1080" y="284" font-size="10" fill="#22303a" font-family="IBM Plex Sans, sans-serif">V: TBD</text>
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#22303a">
+          <text x="942" y="240">−V</text><text x="942" y="260">+V</text><text x="942" y="290">+V</text>
+        </g>
+        <g fill="#d5d9dd" stroke="#555"><circle cx="930" cy="236" r="5"/><circle cx="930" cy="256" r="5"/><circle cx="930" cy="286" r="5"/><circle cx="1100" cy="330" r="5"/></g>
+        <text x="1110" y="344" font-size="10" fill="#22303a" font-family="IBM Plex Mono, monospace">−V</text>
+        <!-- supply to the buck -->
+        <path d="M930 236 H860 V222 H800" fill="none" stroke="#1b1b1b" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M930 256 H845 V266 H800" fill="none" stroke="#d62828" stroke-width="4" stroke-linejoin="round"/>
+        <!-- supply + through the fuse to COM -->
+        <path d="M930 286 H880 V326" fill="none" stroke="#d62828" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M880 362 V404 H831" fill="none" stroke="#d62828" stroke-width="5" stroke-linejoin="round"/>
+        <rect x="870" y="326" width="20" height="36" rx="5" fill="#e6f0f5" stroke="#5e666b" stroke-width="1.5"/>
+        <line x1="880" y1="330" x2="880" y2="358" stroke="#8a8f93" stroke-width="1.5"/>
+        <text x="896" y="350" font-size="11" fill="#22303a" font-family="IBM Plex Sans, sans-serif">fuse</text>
+        <!-- NO to pump +, pump - back to the supply -->
+        <path d="M831 436 H900 V505 H960" fill="none" stroke="#d62828" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M1100 335 V600 H930 V545 H960" fill="none" stroke="#1b1b1b" stroke-width="5" stroke-linejoin="round"/>
+        <!-- pump -->
+        <rect x="960" y="482" width="150" height="86" rx="18" fill="#2b2b2b"/>
+        <rect x="960" y="494" width="12" height="62" fill="#bfc5c9"/>
+        <text x="1035" y="522" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif">VACUUM</text>
+        <text x="1035" y="540" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif">PUMP</text>
+        <text x="978" y="509" font-size="11" fill="#fff" font-family="IBM Plex Mono, monospace">+</text>
+        <text x="978" y="549" font-size="11" fill="#fff" font-family="IBM Plex Mono, monospace">−</text>
+        <!-- diode across the pump: stripe to + -->
+        <circle cx="944" cy="505" r="4" fill="#111"/><circle cx="944" cy="545" r="4" fill="#111"/>
+        <rect x="938" y="513" width="12" height="24" rx="2" fill="#1b1b1b"/>
+        <rect x="938" y="514" width="12" height="5" fill="#d9d9d9"/>
+        <text x="900" y="620" font-size="11" fill="#22303a" font-family="IBM Plex Sans, sans-serif">diode: stripe to pump +</text>
+      </svg>
+    </div>
+    <ol class="callouts">
+      <li><span class="num" style="background:#f28c28">1</span><span><strong>Z+ row, signal pin (inner row)</strong> → servo <strong>orange</strong>. This is D11, the servo pulses: <code>M3 S&lt;µs&gt;</code>.</span></li>
+      <li><span class="num" style="background:#1e6fd9">2</span><span><strong>CoolEn row, signal pin (inner row)</strong> → relay <strong>IN</strong>. This is A3: <code>M8</code> pump on, <code>M9</code> off.</span></li>
+      <li><span class="num" style="background:#111">3</span><span><strong>CoolEn row, GND pin (at the board edge)</strong> → the ground rail: relay GND, buck OUT−, servo brown.</span></li>
+    </ol>
+    <figcaption>The buck converter, set to 5.0 V, feeds the servo (red) and the relay module (VCC); the MG995 runs on 4.8–7.2 V. So nothing draws power from the Uno's 5 V. Find the rows by the names printed next to the header; in each row the pin at the board edge is GND (it beeps against the 12–36V minus on a meter). The relay's screw terminals may be in another order on your module (NO · COM · NC): go by the printed names.</figcaption>
+  </figure>
+
+  <figure>
+    <h2 style="margin:0">Schematic</h2>
+    <div class="scroll">
+      <svg viewBox="0 0 1030 690" role="img" aria-label="Wiring: the CNC shield's CoolEn pin (A3) drives a 5 V relay module whose contacts switch the pump supply to the pump through a fuse, with a flyback diode across the pump. The shield's Z+ end-stop pin (D11) sends the servo pulses to the MG995. A buck converter set to 5.0 V powers the servo and the relay module, with a 1000 microfarad capacitor at its plug, and its ground is joined to the shield's ground.">
+        <!-- PC -->
+        <rect class="box" x="20" y="250" width="110" height="80" rx="6"/>
+        <text class="tt" x="75" y="285" text-anchor="middle">PC</text>
+        <text class="tm" x="75" y="305" text-anchor="middle">bench tools</text>
+        <path class="wusb" d="M130 290 H200"/>
+
+        <!-- Arduino Uno + CNC shield -->
+        <rect class="box" x="200" y="40" width="240" height="500" rx="8"/>
+        <text class="tt" x="216" y="68">Arduino Uno</text>
+        <text class="tt" x="216" y="88">+ CNC Shield V3.00</text>
+        <text class="tm" x="216" y="107">our Grbl build 1.1h.20261007</text>
+        <text class="tp" x="426" y="144" text-anchor="end">CoolEn · A3</text>
+        <text class="tp" x="426" y="184" text-anchor="end">GND</text>
+        <text class="tp" x="426" y="306" text-anchor="end">A4 (SDA)</text>
+        <text class="tp" x="426" y="474" text-anchor="end">Z+ end stop · D11</text>
+        <text class="tp" x="426" y="509" text-anchor="end">GND</text>
+        <rect class="pin psig" x="434" y="134" width="12" height="12"/>
+        <rect class="pin pgnd" x="434" y="174" width="12" height="12"/>
+        <rect class="pin psig" x="434" y="296" width="12" height="12"/>
+        <rect class="pin psig" x="434" y="464" width="12" height="12"/>
+        <rect class="pin pgnd" x="434" y="499" width="12" height="12"/>
+        <rect class="warnbox" x="212" y="350" width="216" height="38" rx="4"/>
+        <text class="tw" x="222" y="365">SpnEn (D12) is the Z limit in</text>
+        <text class="tw" x="222" y="381">Grbl 1.1, not the spindle: leave free</text>
+
+        <!-- logic wires to the pump relay -->
+        <path class="w wsig" d="M446 140 H550"/>
+        <text class="tc" x="497" y="131" text-anchor="middle">M8 / M9</text>
+        <path class="w wgnd" d="M446 180 H550"/>
+        <path class="w w6" d="M510 230 H550"/>
+        <text class="tm" x="506" y="234" text-anchor="end">+5.0 V (buck)</text>
+        <!-- 10 kΩ pull-down from IN to GND -->
+        <circle class="dot" cx="502" cy="140" r="3.5"/>
+        <circle class="dot" cx="502" cy="180" r="3.5"/>
+        <path class="sym" d="M502 140 V146 L497 149 L507 154 L497 159 L507 164 L497 169 L507 174 L502 176 V180"/>
+        <text class="tm" x="511" y="165">10 kΩ</text>
+
+        <!-- relay module -->
+        <text class="t" x="630" y="90" text-anchor="middle">Relay module · 5 V · active-HIGH</text>
+        <rect class="box" x="550" y="100" width="160" height="170" rx="6"/>
+        <text class="tp" x="562" y="144">IN</text>
+        <text class="tp" x="562" y="184">GND</text>
+        <text class="tp" x="562" y="234">VCC</text>
+        <text class="tp" x="698" y="144" text-anchor="end">COM</text>
+        <text class="tp" x="698" y="184" text-anchor="end">NO</text>
+        <text class="tm" x="698" y="224" text-anchor="end">NC free</text>
+        <text class="tm" x="630" y="259" text-anchor="middle">jumper on H</text>
+        <rect class="pin psig" x="544" y="134" width="12" height="12"/>
+        <rect class="pin pgnd" x="544" y="174" width="12" height="12"/>
+        <rect class="pin p6" x="544" y="224" width="12" height="12"/>
+        <rect class="pin p12" x="704" y="134" width="12" height="12"/>
+        <rect class="pin p12" x="704" y="174" width="12" height="12"/>
+        <rect class="pin pfree" x="704" y="214" width="12" height="12"/>
+
+        <!-- valve relay, later -->
+        <path class="w wlater" d="M446 302 H550"/>
+        <text class="tc" x="497" y="294" text-anchor="middle">M7 / M9</text>
+        <rect class="box-later" x="550" y="285" width="160" height="34" rx="6"/>
+        <text class="tm" x="630" y="306" text-anchor="middle">valve relay (later)</text>
+
+        <!-- pump supply -->
+        <rect class="box" x="780" y="16" width="210" height="80" rx="6"/>
+        <text class="tt" x="796" y="40">Pump supply</text>
+        <text class="tm" x="796" y="58">voltage: TBD (pump label)</text>
+        <text class="tp" x="820" y="88" text-anchor="middle">+</text>
+        <text class="tp" x="955" y="88" text-anchor="middle">−</text>
+        <text class="tp" x="980" y="40" text-anchor="end">+</text>
+        <text class="tp" x="980" y="68" text-anchor="end">−</text>
+        <rect class="pin p12" x="814" y="90" width="12" height="12"/>
+        <rect class="pin pgnd" x="949" y="90" width="12" height="12"/>
+        <rect class="pin p12" x="984" y="30" width="12" height="12"/>
+        <rect class="pin pgnd" x="984" y="58" width="12" height="12"/>
+
+        <!-- pump circuit: + through the fuse to COM, NO to the pump -->
+        <path class="w w12" d="M820 102 V140 H781"/>
+        <path class="w w12" d="M745 140 H716"/>
+        <rect class="sym" x="745" y="133" width="36" height="14" rx="3"/>
+        <line class="sym" x1="745" y1="140" x2="781" y2="140" stroke-width="1"/>
+        <text class="tm" x="763" y="125" text-anchor="middle">fuse · TBD A</text>
+        <path class="w w12" d="M716 180 H870 V193"/>
+        <circle class="dot" cx="870" cy="180" r="3.5"/>
+        <circle class="sym" cx="870" cy="215" r="22"/>
+        <text class="tt" x="870" y="221" text-anchor="middle">M</text>
+        <text class="t" x="840" y="219" text-anchor="end">vacuum pump</text>
+        <path class="w wgnd" d="M870 237 V262 H955 V102"/>
+        <!-- flyback diode across the pump: cathode (bar) to + -->
+        <path class="w w12" d="M870 180 H925 V204"/>
+        <polygon class="symfill" points="917,224 933,224 925,206"/>
+        <line class="sym" x1="915" y1="205" x2="935" y2="205"/>
+        <path class="w wgnd" d="M925 224 V262"/>
+        <circle class="dot" cx="925" cy="262" r="3.5"/>
+        <text class="tm" x="912" y="286" text-anchor="middle">diode 1N5819 · stripe to +</text>
+
+        <!-- servo signal and common ground from the shield -->
+        <path class="w wsig" d="M446 470 H594"/>
+        <text class="tc" x="520" y="461" text-anchor="middle">M3 S&lt;µs&gt; / M5</text>
+        <path class="w wgnd" d="M446 505 H594"/>
+        <text class="tm" x="476" y="497">common ground</text>
+
+        <!-- buck converter -->
+        <rect class="box" x="200" y="575" width="200" height="70" rx="6"/>
+        <text class="tt" x="216" y="599">Buck converter</text>
+        <text class="tw" x="216" y="618">set OUT to 5.0 V first</text>
+        <text class="tp" x="388" y="597" text-anchor="end">OUT−</text>
+        <text class="tp" x="388" y="631" text-anchor="end">OUT+</text>
+        <text class="tp" x="260" y="637" text-anchor="middle">IN+</text>
+        <text class="tp" x="320" y="637" text-anchor="middle">IN−</text>
+        <rect class="pin pgnd" x="394" y="587" width="12" height="12"/>
+        <rect class="pin p6" x="394" y="621" width="12" height="12"/>
+        <rect class="pin p12" x="254" y="639" width="12" height="12"/>
+        <rect class="pin pgnd" x="314" y="639" width="12" height="12"/>
+        <!-- buck input from the supply's second terminal pair -->
+        <path class="w w12" d="M996 36 H1012 V676 H260 V651"/>
+        <path class="w wgnd" d="M996 64 H1000 V663 H320 V651"/>
+
+        <path class="w wgnd" d="M406 593 H480 V505"/>
+        <circle class="dot" cx="480" cy="505" r="3.5"/>
+        <path class="w w6" d="M406 627 H594"/>
+        <text class="tm" x="500" y="619" text-anchor="middle">+5.0 V</text>
+        <!-- 1000 µF at the servo plug: stripe (−) to GND -->
+        <circle class="dot" cx="572" cy="505" r="3.5"/>
+        <circle class="dot" cx="572" cy="627" r="3.5"/>
+        <path class="w wgnd" d="M572 505 V560"/>
+        <line class="sym" x1="560" y1="560" x2="584" y2="560"/>
+        <path class="sym" d="M560 574 Q572 566 584 574"/>
+        <path class="w w6" d="M572 570 V627"/>
+        <text class="tp" x="586" y="592">+</text>
+        <text class="tm" x="552" y="556" text-anchor="end">1000 µF</text>
+        <text class="tm" x="552" y="574" text-anchor="end">10 V or more</text>
+
+        <!-- MG995 270° -->
+        <rect class="box" x="600" y="440" width="190" height="205" rx="8"/>
+        <rect class="pin psig" x="594" y="464" width="12" height="12"/>
+        <rect class="pin pgnd" x="594" y="499" width="12" height="12"/>
+        <rect class="pin p6" x="594" y="621" width="12" height="12"/>
+        <text class="t" x="614" y="474">orange · signal</text>
+        <text class="t" x="614" y="509">brown · GND</text>
+        <text class="t" x="614" y="631">red · +5 V</text>
+        <text class="tt" x="614" y="562">MG995 · 270°</text>
+        <text class="tm" x="614" y="582">nozzle rotation</text>
+      </svg>
+    </div>
+    <ul class="legend" aria-label="Wire colours">
+      <li><span class="sw" style="border-color: var(--w12)"></span>Pump supply + (voltage TBD)</li>
+      <li><span class="sw" style="border-color: var(--w6)"></span>+5.0 V (servo and relay)</li>
+      <li><span class="sw" style="border-color: var(--wsig)"></span>Signal</li>
+      <li><span class="sw" style="border-color: var(--wgnd)"></span>Ground</li>
+      <li><span class="sw dash" style="border-color: var(--muted)"></span>USB</li>
+    </ul>
+    <figcaption>One board drives everything. The relay's contacts (COM, NO) carry only the pump current, and its coil side is switched from CoolEn. The servo and the relay take their 5.0 V from the buck converter, never from the Uno. Its supply ground, the buck's OUT−, is joined to the shield's GND, so the pulses from D11 have a reference.</figcaption>
+  </figure>
+
+  <div class="cols">
+    <section>
+      <h2>Shield pins</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Printed on shield</th><th>Pin</th><th>Our Grbl build</th><th>Goes to</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">Z+ (or Z−)</td><td class="mono">D11</td><td>Servo pulses: <code>M3 S&lt;µs&gt;</code> (500–2500), <code>M5</code> stops them</td><td>Servo orange</td></tr>
+            <tr><td class="mono">CoolEn</td><td class="mono">A3</td><td>Flood: <code>M8</code> on, <code>M9</code> off</td><td>Pump relay IN</td></tr>
+            <tr><td class="mono">SDA</td><td class="mono">A4</td><td>Mist: <code>M7</code> on, <code>M9</code> off</td><td>Valve relay IN, later</td></tr>
+            
+            <tr><td class="mono">GND</td><td class="mono">GND</td><td>Ground</td><td>Ground rail: relay GND, buck OUT−, servo brown (use the CoolEn row's edge pin)</td></tr>
+            <tr class="no"><td class="mono">SpnEn</td><td class="mono">D12</td><td>Z limit input</td><td>Nothing</td></tr>
+            <tr class="no"><td class="mono">SpnDir</td><td class="mono">D13</td><td>Spindle direction</td><td>Nothing</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="lede" style="margin-top:12px">The shield's labels come from Grbl 0.9. In Grbl 1.1 the spindle output is D11, which the shield prints as the Z end stop. Each end-stop place has a signal pin and a GND pin. The GND pin beeps against the shield's GND on a meter, so use the other one. Check where A4 comes out on your shield with a meter too, before you add the valve.</p>
+    </section>
+
+    <section>
+      <h2>Before power-on</h2>
+      <ol>
+        <li><strong>Relay first, USB only.</strong> Without the pump supply, run <code>tools/servo_pump_test.py --pump</code>: the relay must click on for 3&nbsp;s, then off. If it works the other way round, the module is active-LOW: set its jumper to H, or use another module.</li>
+        <li><strong>Set the buck converter to 5.0 V</strong> with a meter before the servo is plugged in.</li>
+        <li><strong>Capacitor at the servo plug</strong>, stripe (−) to GND.</li>
+        <li><strong>Join the grounds:</strong> buck OUT− to the shield's GND (the CoolEn row's pin at the board edge). Without it the servo twitches and the relay may not switch.</li>
+        <li><strong>Diode across the pump</strong>, stripe to the pump's +.</li>
+        <li><strong>Servo test:</strong> <code>tools/servo_pump_test.py --servo</code> sweeps it (centre, both ends, quarter points) and leaves it at the centre. <code>--us 1500</code> holds one position, <code>--off</code> lets it go limp.</li>
+      </ol>
+      <p class="note" style="margin-top:14px">Never feed the servo from the Uno's 5 V pin. Its current peaks pull the 5 V down and reset the Uno, and then the head position is lost.</p>
+    </section>
+  </div>
+
+  <section>
+    <h2>Parts for this wiring</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Part</th><th>What to get</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>Relay module</td><td>5 V coil, 1 channel, active-HIGH (or an H/L jumper)</td><td>Contacts rated above the pump current</td></tr>
+          <tr><td>Resistor</td><td>10 kΩ</td><td>IN to GND: the relay stays off while the Uno resets</td></tr>
+          <tr><td>Diode</td><td>1N5819 or 1N4007</td><td>Across the pump, stripe to +</td></tr>
+          <tr><td>Fuse</td><td><span class="tbd">TBD</span></td><td>A little above the pump's running current</td></tr>
+          <tr><td>Pump supply</td><td><span class="tbd">TBD</span> voltage</td><td>From the pump's label; the docs assume 12 V</td></tr>
+          <tr><td>Buck converter</td><td>3 A or more; input range covers the pump supply</td><td>Output set to 5.0 V: feeds the servo and the relay module</td></tr>
+          <tr><td>Capacitor</td><td>1000 µF, 10 V or more, electrolytic</td><td>Right at the servo plug</td></tr>
+          <tr><td>Servo</td><td>MG995, 270° version</td><td>Brown GND, red +, orange signal</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Still open</h2>
+    <ul>
+      <li>Pump voltage and current, which set the supply and the fuse.</li>
+      <li>Pulse width to nozzle angle, and the time the servo needs to turn. Until they are measured, the tools wait 1&nbsp;s after each turn. The 270° range differs from servo to servo, so it is measured, not assumed.</li>
+      <li>The valve on A4, when you add it: the same relay wiring as the pump, with its own diode across the valve coil.</li>
+    </ul>
+  </section>
+</div>

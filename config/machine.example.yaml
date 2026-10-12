@@ -1,0 +1,101 @@
+# Machine configuration: EXAMPLE. Copy it to machine.yaml and fill it in.
+# Units: mm, degrees, seconds. Feed rates in mm/min.
+# "cal" = written by the calibration tools (docs/08-calibration.md). "TBD" = decide after the open questions.
+
+serial:
+  port: /dev/ttyACM0          # Pico running grblHAL (USB CDC)
+  baud: 115200
+  status_poll_s: 0.15
+  watchdog_s: 2.0
+
+# Soft limits in the machine frame (origin = HOME mark, Z0 = safe height, down is negative).
+# grblHAL's $3 must make +X = right, +Y = away from the operator, +Z = up.
+soft_limits:                  # TBD after Q1 (CNC travel). Bench: camera reach ~150 x 230 mm (config/bench.yaml)
+  x: null                     # null = not set: the app must refuse every X/Y move until it is filled in
+  y: null
+  z: [-12.0, 0.0]
+
+motion:
+  max_feed_xy: 6000           # tune in phase 1
+  max_feed_z: 1200
+  jog_feed_not_homed: 300
+  backlash_approach_mm: [0.5, 0.5]   # every final approach ends with this move in +X +Y
+
+homing:
+  marker_id: 49               # ArUco DICT_4X4_50, A4 sticker label (tools/make_labels.py)
+  marker_size_mm: 10          # must match config/bed.yaml markers.size_mm
+  check_every_n_parts: 20
+  max_drift_mm: 0.05
+
+z:
+  safe: 0.0
+  board_top: null             # cal (step 8)
+  bottom_camera: null         # cal (step 9, phase 7)
+  spring_travel: 1.5
+
+head:
+  nozzle_offset_xy: null      # cal (step 7): nozzle position = camera position + offset (~[35, 0])
+  runout: null                # cal (step 9, phase 7)
+  nozzles:
+    N1: {needle: 22G, od_mm: 0.72}
+    N2: {needle: 20G, od_mm: 0.91}
+    N3: {needle: 16G, od_mm: 1.65}
+    N4: {needle: 14G, od_mm: 2.11}
+  current_nozzle: N2
+
+servo:                        # nozzle rotation (D18): MG995 hobby servo, NOT a G-code axis
+  # No own port: the angle goes through G-code, M3 S<us> (pulse width in microseconds) on the spindle
+  # PWM output of Grbl/grblHAL, then G4 P<settle_s>. M5 = servo limp.
+  pulse_range_us: null        # cal: [min, max] pulse the servo can use, stop before its end stops
+  pulse_to_angle: null        # cal: table of [pulse_us, angle_deg] pairs, measured with the camera
+  range_deg: null             # cal: the angle range the servo really turns (the 270° version: measure it)
+  settle_s: null              # cal: wait after each turn (the servo has no feedback)
+
+vacuum:                       # decision D3: synchronized grblHAL outputs, never Pi GPIO (mapping: D18)
+  pump_on: "M8"               # flood coolant
+  pump_off: "M9"
+  valve_vacuum: "M7"          # mist coolant
+  valve_vent: "M9"            # M9 also stops the pump: send pump_on again after each place
+  pick_dwell_s: 0.15
+  place_dwell_s: 0.10
+  pick_retries: 3
+
+top_camera:
+  device: /dev/video0
+  resolution: [1920, 1080]
+  settle_s: 0.15
+  drop_frames: 2
+  # Control names differ between cameras. Check with: v4l2-ctl -d /dev/video0 --list-ctrls
+  controls:
+    auto_exposure: 1          # 1 = manual on most UVC cameras
+    exposure_time_absolute: 150
+    white_balance_automatic: 0
+    white_balance_temperature: 4600
+    focus_automatic_continuous: 0
+    focus_absolute: 0
+  matrix: null                # cal (step 4): 3x3 camera matrix
+  dist: null                  # cal (step 4): distortion coefficients
+  M: null                     # cal (step 5): 2x2 pixel -> mm matrix
+  led_gpio: 12                # Pi GPIO, hardware PWM, through a MOSFET
+  led_duty: 0.6
+
+bottom_camera:                # phase 7
+  enabled: false
+  picamera_index: 0
+  resolution: [2304, 1296]
+  controls: {AfMode: 0, LensPosition: 0.0, ExposureTime: 4000, AnalogueGain: 1.0}   # AfMode 0 = manual
+  center_xy: null             # cal: machine XY of the nozzle when it is centered over the camera
+  M: null
+  led_gpio: 13
+  led_duty: 0.6
+
+pcb_holder:
+  # Rough machine XY of the 4 hole positions in the holder (±2 mm). The camera searches around them.
+  # TBD after the bed survey: inside the PCB area of config/bed.yaml. Spacing for HT5023: 121.4 x 131.4 mm
+  hole_positions_xy: null
+  hole_diameter_mm: 3.2
+  fit_limits: {scale_tol: 0.002, max_residual_mm: 0.15, max_angle_deg: 3.0}
+
+mechanics:
+  backlash_mm: {x: null, y: null, z: null}   # for information only (phase 0)
+  skew_correction: null                      # cal (step 10, optional)
