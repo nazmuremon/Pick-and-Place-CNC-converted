@@ -39,11 +39,12 @@ import yaml
 import bed_test_run as t
 import make_labels as ml
 from bench import Grabber, Grbl, load_bench, mark_parked, was_parked
+from pnp_paths import CONFIG_DIR, LOGS_DIR
 from smd_identify import DEFAULT_CAMERA
 
 ROOT = Path(__file__).resolve().parents[1]
-RECTIFY_FILE = ROOT / "config" / "camera_rectify.yaml"
-LOG_DIR = ROOT / "logs" / "camera_rectify"
+RECTIFY_FILE = CONFIG_DIR / "camera_rectify.yaml"
+LOG_DIR = LOGS_DIR / "camera_rectify"
 WINDOW = "Camera rectify"
 
 

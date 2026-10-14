@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pnp"
+version = "2.0.0a1"
+description = "Pick and place program for small DIY machines (Grbl / grblHAL, USB head camera, vacuum nozzle)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "opencv-python>=4.8",
+    "pyserial>=3.5",
+    "PyYAML>=6.0",
+    "pydantic>=2.5",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "websockets>=12",                 # the page's live status (/ws)
+    "Pillow>=10",                     # printable PDFs (calibration sheet, labels)
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "httpx>=0.27"]
+trays = ["manifold3d>=2.4", "trimesh>=4"]    # "Add tray" makes the 3D printed holder (STL)
+
+[project.scripts]
+pnp = "pnp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pnp = ["ui/static/*", "ui/static/vendor/*", "data/*", "data/profiles/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

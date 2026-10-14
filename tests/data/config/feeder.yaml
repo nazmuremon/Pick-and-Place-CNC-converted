@@ -1,0 +1,155 @@
+# FROZEN TEST COPY of config/feeder.yaml, taken 2026-10-12. Only the tests read it (tests/conftest.py copies it to
+# a temporary folder for every test run). Never update it from the calibration tools or by copying the live
+# file again: change a value here only together with the test that needs it.
+# Written by the pick and place page (ui/app.py): what is in each slot (D11, D17), the board side
+# for the job, and the package data (from feeder.example.yaml). Edit the packages here if needed.
+slots:
+  3:
+    line: C:1e-07:C_0805
+    value: 100 nF
+    footprint: C_0805
+    qty: 17
+    side: B
+detection:
+  size_tolerance: 0.2
+  min_gap_mm: 0.5
+packages:
+  R_0603:
+    body_mm:
+    - 1.6
+    - 0.8
+    height_mm: 0.45
+    nozzle: N1
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: false
+  C_0603:
+    body_mm:
+    - 1.6
+    - 0.8
+    height_mm: 0.8
+    nozzle: N1
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: false
+  R_0805:
+    body_mm:
+    - 2.0
+    - 1.25
+    height_mm: 0.5
+    nozzle: N2
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: false
+  C_0805:
+    body_mm:
+    - 2.0
+    - 1.25
+    height_mm: 1.25
+    nozzle: N2
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: false
+  R_1206:
+    body_mm:
+    - 3.2
+    - 1.6
+    height_mm: 0.55
+    nozzle: N2
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: false
+  R_2512:
+    body_mm:
+    - 6.3
+    - 3.2
+    height_mm: 0.55
+    nozzle: N3
+    tape_mm: 12
+    pitch_mm: 4
+    polarized: false
+  XTAL_3215:
+    body_mm:
+    - 3.2
+    - 1.5
+    height_mm: 0.9
+    nozzle: N2
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: false
+  SOD-123:
+    body_mm:
+    - 2.7
+    - 1.6
+    height_mm: 1.1
+    nozzle: N2
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: true
+    polarity: cathode_band
+    angle_in_tape: null
+  SMA:
+    body_mm:
+    - 4.3
+    - 2.6
+    height_mm: 2.2
+    nozzle: N3
+    tape_mm: 12
+    pitch_mm: 4
+    polarized: true
+    polarity: cathode_band
+    angle_in_tape: null
+  SOT-23:
+    body_mm:
+    - 2.9
+    - 1.3
+    height_mm: 1.0
+    nozzle: N2
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: true
+    polarity: lead_count
+    angle_in_tape: null
+  SOT-23-6:
+    body_mm:
+    - 2.9
+    - 1.6
+    height_mm: 1.1
+    nozzle: N2
+    tape_mm: 8
+    pitch_mm: 4
+    polarized: true
+    polarity: pin1_mark
+    angle_in_tape: null
+  SOT-89:
+    body_mm:
+    - 4.5
+    - 2.5
+    height_mm: 1.5
+    nozzle: N3
+    tape_mm: 12
+    pitch_mm: 8
+    polarized: true
+    polarity: tab
+    angle_in_tape: null
+footprint_map:
+  R_0603_1608Metric: R_0603
+  C_0603_1608Metric: C_0603
+  R_0805_2012Metric: R_0805
+  C_0805_2012Metric: C_0805
+  D_0805_2012Metric: C_0805
+  R_1206_3216Metric: R_1206
+  R_2512_6332Metric: R_2512
+  CRYSTAL-SMD_L3.2-W1.5: XTAL_3215
+  D_SOD-123: SOD-123
+  D_SMA: SMA
+  SMA_L4.4-W2.8-LS5.4-RD: SMA
+  1N4007_SMD: SMA
+  SOT-23: SOT-23
+  SOT-23-3: SOT-23
+  SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BL: SOT-23-6
+  SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BR: SOT-23-6
+  SOT-89-3: SOT-89
+job:
+  side: B
+  top_edge: front

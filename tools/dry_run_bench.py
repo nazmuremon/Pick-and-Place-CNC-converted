@@ -37,12 +37,13 @@ import yaml
 import bed_test_run as t
 import camera_rectify as cr
 import make_labels as ml
-from bench import Grbl, GrblError, load_bench, mark_parked, was_parked
+from bench import BENCH_CONFIG, Grbl, GrblError, load_bench, mark_parked, was_parked
+from pnp_paths import LOGS_DIR
 from smd_identify import DEFAULT_CAMERA
 
 ROOT = Path(__file__).resolve().parents[1]
 BOARD_JS = ROOT.parent / "solder_helper" / "board_data.js"
-LOG_DIR = ROOT / "logs" / "dry_run"
+LOG_DIR = LOGS_DIR / "dry_run"
 WINDOW = "Dry pick and place"
 HOLES = ("H1", "H2", "H3", "H4")
 HOLE_D_MM = 3.2
@@ -852,7 +853,7 @@ def _closed(poly: np.ndarray) -> np.ndarray:
 
 
 def set_bench_feed(feed: float, accel: float) -> None:
-    path = ROOT / "config" / "bench.yaml"
+    path = BENCH_CONFIG
     text = path.read_text()
     text = re.sub(r"(?m)^  max_feed: .*$",
                   f"  max_feed: {feed:g}     # mm/min, from the camera speed test {datetime.date.today()} "

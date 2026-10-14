@@ -1,0 +1,71 @@
+# EXAMPLE bed file shipped with the program (the HT5023 bench's layout, D17). `pnp init` copies it to your config
+# folder as bed.yaml: change the layout to your bed, then let the bed survey measure the real places.
+# The bed and the labels stuck on it (decisions D11-D17 in docs/02-architecture.md; layout = D17).
+# Labels are printed on one A4 sheet of sticker paper with:  .venv/bin/python tools/make_labels.py
+# Units: mm. Positions do not need to be exact: the camera measures every label.
+
+bed:
+  size_mm: [240, 440]       # X (left-right) x Y (front-back), measured by the owner 2026-10-06
+  travel_mm: null           # TBD (Q1): real X / Y / Z travel. The layout below must fit inside it.
+
+print:
+  page_mm: [210, 297]       # A4 matte sticker paper, normal printer at 100 % ("actual size")
+  check_bar_mm: 100         # two bars on the sheet (across and down): both must measure this
+
+# The same labels can also go on the Brother PT-D410:  tools/make_labels.py --tape
+tape_printer:
+  model: PT-D410
+  dpi: 180                  # from the ptouch-print device table
+  tape_mm: 18               # owner, 2026-10-06. 12 mm tape is too narrow for a 10 mm marker + white border
+  tape_px: {12: 76, 18: 120}    # printable height for each tape, from the ptouch-print tape table
+
+markers:
+  dictionary: DICT_4X4_50
+  size_mm: 10               # black square of every marker. The printed size is checked with the bars
+  border_error_rate: 0.6    # ArUco: share of the black border cells that may read wrong. Default 0.35 missed
+                            # a clear HOME in the tilted, slightly soft head camera (2026-10-08)
+  clahe: false              # local contrast equalisation before the label detection (uneven light, 2026-10-11)
+  quiet_mm: 2.5             # white border around every marker (at least 1 cell = 1.7 mm)
+  home_id: 49
+  pcb_corner_ids: [30, 31, 32, 33]                   # PCB corner 1, 2, 3, 4
+  slot_ids: [40, 41, 42, 43, 44, 45, 46, 47]         # feed slot 1 .. 8
+  # Other IDs in use: 20-23 = the smd_identify demo sheet. Not used any more: 0-3 and 10-19 (old magazine plates).
+
+pcb_area:
+  # The machine reaches only about 150 x 230 mm (test run 2026-10-06), so the PCB area is the HT5023
+  # board itself (130 x 140 mm), not 150 x 150 (R8). The board is found by its 4 mounting holes (D9).
+  size_mm: [130, 140]
+  # 2026-10-08 (D21): the owner stuck the PCB 1-4 labels around the board area (photo): PCB 1 front-left,
+  # 2 front-right, 3 back-right, 4 back-left, markers at the outer front / back ends. The bed survey
+  # (page: Setup 0) measures them and puts the board area between them.
+  corner_labels: true
+
+feed_tray:
+  slots: 5                  # only 5 bars are inside the reach (test run 2026-10-06)
+  slot_numbers: [3, 4, 5, 6, 7]   # the printed labels in use. Labels 1, 2 and 8 are spares
+  # Each slot holds one cut-tape strip, cover film removed by hand, laid in the zone: holes on the
+  # side the top of the slot number points to, the row of parts on the centre marks.
+  label_height_mm: 20       # slot label: marker, number, zone. 87 x 20 mm
+  zone_length_mm: 60        # the tape mark: about 15 parts at 4 mm pitch
+  zone_height_mm: 16        # fits 8 mm and 12 mm tape
+  search_margin_mm: 1.0     # parts are searched this far inside the zone edges
+
+# Layout, in mm from the centre of the HOME marker (+X right, +Y back): the machine's reach was
+# measured from HOME (config/bench.yaml), so everything is placed from HOME too.
+# Owner's layout after the test run (2026-10-06): slot labels 3-7 on their T-slot bars, running
+# front-back, markers at the BACK end; HOME on the old slot-2 bar, in line with the slot markers;
+# the board in front of the slots. Slot positions MEASURED by the automatic bed survey
+# (tools/bed_test_run.py --auto, 2026-10-06, logs/test_run/20261006-163410/survey.yaml).
+layout:
+  home_marker_xy: [0, 0]
+  slot_direction: [0, -1]                # each slot label runs from its marker to the FRONT
+  slot_marker_xy:                        # slot number: marker centre (bars 29.5-31.5 mm apart)
+    3: [-29.2, -1.5]                     # FROZEN: the 2026-10-06 survey, the plan the tests were written for
+    4: [-58.9, 0.8]                      # (the live file now holds the 2026-10-11 survey)
+    5: [-89.0, 2.7]
+    6: [-120.5, 2.5]
+    7: [-150.0, 1.7]
+  pcb_area_xy: [-121.8, -242.0]          # front-left corner of the 130 x 140 board area: centred between the
+                                         # PCB labels (D21). FROZEN: the plan before the 2026-10-08 survey
+  pcb_corner_marker_xy: [[-143.0, -255.0], [32.0, -250.0], [32.0, -94.0], [-148.0, -89.0]]   # PCB 1-4 marker centres (plan)
+  bottom_camera_xy: null                 # phase 7: TBD (no room inside the reach)

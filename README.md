@@ -14,8 +14,8 @@ First target board: **HT5023 energy meter v1** (`../ht5023_energy_meter_v1.kicad
 
 ## Status
 
-**Phase 0 – planning and first tests (updated 2026-10-07).** The planned app (`src/pnp/`) is
-not written yet, and the Pico is not wired yet. What exists:
+**Phase 0 – planning and first tests (updated 2026-10-12).** The Pico is not wired yet. Software v2
+(`src/pnp/`) has Phases A–G (see below): base, boards, vision, the set-up wizard, jobs, the parts store and hand assembly, support, the hardware upgrades. What exists:
 
 - The design docs and example config files.
 - **Bed labels** (D11–D15): printed on the PT-D410 with 18 mm tape, and stuck on the bed.
@@ -64,6 +64,42 @@ Z), the MG995 servo does not come back to the same angle, and the needle sits 1.
 The software works around all three, but a stepper for the rotation and a Z reference are the next hardware
 steps. Six 3D printed feeder trays (`hardware/tray/`) are designed: they slide into the T-slots, peel the
 cover film off while the strip is pushed in, and carry the slot marker. Not printed yet.
+
+**2026-10-12: software v2, Phase A.** The universal program ([docs/13-build-prompt-v2.md](docs/13-build-prompt-v2.md))
+has its base in `src/pnp/`: one machine profile per machine (`config/profiles/`), a Grbl / grblHAL driver
+that notices a controller reset even after a program restart, one lock state, a simulator, and the page
+(`PYTHONPATH=src .venv/bin/python -m pnp sim --open` to try it without the machine). Camera homing, heights,
+board import and the job come in the next phases; until then the bench page `ui/app.py` stays in use. See
+[docs/07-software.md](docs/07-software.md#software-v2-srcpnp).
+
+**2026-10-12: software v2, Phase B.** Boards import from KiCad, Gerber X3 or a centroid file (KiCad, Altium,
+EasyEDA, JLC, Eagle) into one board model, checked part by part; the HT5023 gives the same board from all of them.
+The package library sorts the parts like [docs/11](docs/11-target-board-ht5023.md): 148 for the machine, 12 for the
+bottom camera, 7 by hand. Board tab in the page, or `pnp import FILE --save`.
+
+**2026-10-12: software v2, Phase C.** Vision: the camera is calibrated from a printed ChArUco sheet (Setup tab,
+step 3), homes on the HOME label, registers the board on its holes and corners (Board tab) and draws the pads on
+the live picture; a click on the picture moves the head there. Tested in the simulator and on pictures from this
+bench; not yet run on the machine.
+
+**2026-10-12: software v2, Phase D.** The Setup tab is a guided wizard: travel, camera, Home and Z, the nozzle
+offset and the servo's angle table from ink marks, the bed survey, the board, and the first part placed and
+measured. Every result says if it is still valid, and Undo puts the last value back. Simulated only.
+
+**2026-10-12: software v2, Phases E, E2, F.** Jobs (plan, loads, pick and place with checks, reports, STOP with a
+part on the nozzle, resume after a crash, a pick test), trays as a list with "Add tray" (STL or label), Solder Helper
+merged as the Hand tab (drawers, bag scans, labels, one placed state with the machine), the Doctor, export / import,
+`pnp init`. Simulated only; Phase G (bottom camera, sensors, feeders, panels) waits for the owner's order.
+
+**2026-10-14: software v2, Phase G.** The upgrades, each a profile change plus one Setup step: a bottom camera,
+XY switches, a stepper rotation axis, a valve and a vacuum sensor, a switched head light, nozzle changes, matrix trays
+and sticks, panels of several boards. Simulated; see [docs/builder/upgrades.md](docs/builder/upgrades.md).
+
+**How to use it (for anybody):** [docs/user/GUIDE.md](docs/user/GUIDE.md) — the complete guide: install, the
+simulator, every Setup step, trays, jobs, the Hand tab, locks, troubleshooting, keys.
+
+**Install it (a second person):** [docs/user/install.md](docs/user/install.md) — `pipx install` this folder,
+`pnp sim --open` to try it without a machine, `pnp init` for your machine.
 
 Some design details wait on the [open questions](docs/01-requirements.md#open-questions)
 (CNC model and travel, driver model, pump).
@@ -133,13 +169,15 @@ pick_and_place_robot/
 ├── tools/          stand-alone tools: labels, demo, test bench, calibration
 ├── ui/             the web page for the bench: live camera, jog, set-up steps, feeders, job (ui/app.py)
 ├── firmware/       the bench Grbl build with the nozzle servo (see firmware/README.md)
-├── tests/          pytest tests for the tools
+├── src/pnp/        software v2 (docs/13): profile, motion, capabilities, simulator, page
+├── deploy/systemd/ service files for v2 (the program and the port keeper)
+├── tests/          pytest tests: the tools (frozen settings in tests/data/config/) and v2 (tests/v2/)
 ├── hardware/print/ printable labels and the bed map
 ├── hardware/tray/  3D printed feeder trays (the script that makes them, and the STL files)
 └── logs/           results of the tools (for example logs/test_run/)
 ```
 
-Folders to add later: `src/` (the Python app for the Pi), the grblHAL build and settings in `firmware/`,
+Folders to add later: the grblHAL build and settings in `firmware/`,
 wiring photos.
 
 ## Related tools

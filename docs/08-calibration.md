@@ -1,5 +1,7 @@
 # 08 – Calibration
 
+> **v2 (2026-10-12, Phase C):** the camera steps (lens, tilt, camera height, steps/mm check) are one ChArUco calibration in the page (Setup tab, step 3, D28); results go to the calibration store with their inputs, not `config/machine.yaml`. See [07-software.md](07-software.md#software-v2-srcpnp). The steps below stay valid for the bench tools.
+
 Do the steps **in this order**. Each step uses results from the steps before it.
 Results go into `config/machine.yaml`. The calibration tools write them there; don't edit them
 by hand unless a step says so.

@@ -37,6 +37,11 @@ pcb_area:
   # 2 front-right, 3 back-right, 4 back-left, markers at the outer front / back ends. The bed survey
   # (page: Setup 0) measures them and puts the board area between them.
   corner_labels: true
+  # 3D printed PCB corner pieces (hardware/tray/pcb_corner.py) instead of the paper PCB 1-4 labels: PCB 3 / 4 hold
+  # the board's back corners (board pushed back and left), PCB 1 / 2 mark the front corners. When they are on the
+  # bed, set this to {left_arm_mm: 29.3, right_arm_mm: 22.0, edge_mm: 8.5} (the sizes in pcb_corner.py) and run the
+  # bed survey: the board area then comes from the pieces, not from the middle between the markers.
+  corner_holders: null
 
 feed_tray:
   slots: 5                  # only 5 bars are inside the reach (test run 2026-10-06)
@@ -47,6 +52,9 @@ feed_tray:
   zone_length_mm: 60        # the tape mark: about 15 parts at 4 mm pitch
   zone_height_mm: 16        # fits 8 mm and 12 mm tape
   search_margin_mm: 1.0     # parts are searched this far inside the zone edges
+  tape_floor_mm: 0.0        # how much higher the parts' tops are than on the paper labels: 0 on the labels, 6.5 in
+                            # the 3D printed holders (hardware/tray/: tape top 7.5 above the bar in every holder).
+                            # Taken off the place height
 
 # Layout, in mm from the centre of the HOME marker (+X right, +Y back): the machine's reach was
 # measured from HOME (config/bench.yaml), so everything is placed from HOME too.

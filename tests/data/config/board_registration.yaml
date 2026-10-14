@@ -1,0 +1,45 @@
+# FROZEN TEST COPY of config/board_registration.yaml, taken 2026-10-12. Only the tests read it (tests/conftest.py copies it to
+# a temporary folder for every test run). Never update it from the calibration tools or by copying the live
+# file again: change a value here only together with the test that needs it.
+side: B
+top_edge: front
+camera_height: '2026-10-11T12:35:23'
+M:
+- - 1.011348
+  - 0.003269
+- - -0.008809
+  - 0.995325
+c_from_home:
+- -185.1783
+- -251.2785
+corners_from_home:
+  H1:
+  - -114.942
+  - -227.667
+  H2:
+  - 7.695
+  - -228.808
+  H3:
+  - 8.265
+  - -97.95
+  H4:
+  - -114.653
+  - -96.953
+holes:
+- H1
+- H2
+- H3
+- H4
+residuals_mm:
+- 0.079
+- 0.079
+- 0.079
+- 0.079
+angle_deg: -0.499
+scale:
+- 1.01139
+- 0.99533
+by: holes found by the camera
+time: '2026-10-11T16:24:58'
+note: machine = M @ (side/top-edge turn @ KiCad xy) + c. Valid while the board stays
+  put

@@ -1,0 +1,82 @@
+# FROZEN TEST COPY of config/packages.yaml, taken 2026-10-12 for the v2 tests (tests/v2/).
+# Never update it from the program: the tests expect these values.
+# Package library (docs/13 §4.4), shipped with the program. Your own additions go in packages.user.yaml (read
+# first, so it can also change an entry here).
+#
+# Sizes are NOMINAL values from the package standards (EIA chip sizes, JEDEC outlines) and typical datasheets, not
+# measured on this machine. height = the tallest usual part in mm (capacitors are thicker than resistors).
+# A footprint name is matched in this order: an alias (exact, any case), a pattern (regular expression), the
+# metric chip code (2012Metric -> 0805), the LCSC / EasyEDA name style (SOT-23-6_L2.9-W1.6-...).
+#
+#   kind:      chip | diode | transistor | ic | crystal | switch | inductor | other
+#   body:      [length, width] mm (the long side first)
+#   pads:      number of pads
+#   polar:     true when the orientation matters (a 180° turn is wrong)
+#   pickable:  yes | bottom_camera (needs the part's angle on the nozzle) | by_hand  (yes = true in YAML: both work)
+#   tape:      EIA-481 carrier tape: width and pocket pitch, mm
+#   tape_angle: the part's angle in the pocket (library zero = 0°) in the slot frame (tape along +X). null = TBD:
+#              measured on the first part of a strip (docs/13 §4.4). Chips lie across the tape: 90.
+#   nozzle:    a nozzle id of the profile, or null (any)
+schema_version: 1
+packages:
+  "0201": {kind: chip, body: [0.6, 0.3], height: 0.3, pads: 2, polar: false, pickable: by_hand,
+           tape: {width: 8, pitch: 2}, tape_angle: 90, nozzle: null}     # too small for the needles we have
+  "0402": {kind: chip, body: [1.0, 0.5], height: 0.55, pads: 2, polar: false, pickable: yes,
+           tape: {width: 8, pitch: 2}, tape_angle: 90, nozzle: null}
+  "0603": {kind: chip, body: [1.6, 0.8], height: 0.9, pads: 2, polar: false, pickable: yes,
+           tape: {width: 8, pitch: 4}, tape_angle: 90, nozzle: null}
+  "0805": {kind: chip, body: [2.0, 1.25], height: 1.35, pads: 2, polar: false, pickable: yes,
+           tape: {width: 8, pitch: 4}, tape_angle: 90, nozzle: null}
+  "1206": {kind: chip, body: [3.2, 1.6], height: 1.8, pads: 2, polar: false, pickable: yes,
+           tape: {width: 8, pitch: 4}, tape_angle: 90, nozzle: null}
+  "1210": {kind: chip, body: [3.2, 2.5], height: 2.5, pads: 2, polar: false, pickable: yes,
+           tape: {width: 8, pitch: 4}, tape_angle: 90, nozzle: null}
+  "1812": {kind: chip, body: [4.5, 3.2], height: 2.5, pads: 2, polar: false, pickable: yes,
+           tape: {width: 12, pitch: 8}, tape_angle: 90, nozzle: null}
+  "2010": {kind: chip, body: [5.0, 2.5], height: 0.7, pads: 2, polar: false, pickable: yes,
+           tape: {width: 12, pitch: 4}, tape_angle: 90, nozzle: null}
+  "2512": {kind: chip, body: [6.3, 3.2], height: 0.7, pads: 2, polar: false, pickable: yes,
+           tape: {width: 12, pitch: 4}, tape_angle: 90, nozzle: null}
+  "SOD-123": {kind: diode, body: [2.7, 1.6], height: 1.35, pads: 2, polar: true, pickable: yes,
+              tape: {width: 8, pitch: 4}, tape_angle: null, nozzle: null, patterns: ["SOD-?123(?!F)"]}
+  "SOD-123F": {kind: diode, body: [2.7, 1.6], height: 1.1, pads: 2, polar: true, pickable: yes,
+               tape: {width: 8, pitch: 4}, tape_angle: null, nozzle: null, patterns: ["SOD-?123F"]}
+  "SOD-323": {kind: diode, body: [1.7, 1.25], height: 1.1, pads: 2, polar: true, pickable: yes,
+              tape: {width: 8, pitch: 4}, tape_angle: null, nozzle: null, patterns: ["SOD-?323"]}
+  "SMA": {kind: diode, body: [4.3, 2.6], height: 2.4, pads: 2, polar: true, pickable: yes,
+          tape: {width: 12, pitch: 4}, tape_angle: null, nozzle: null,
+          aliases: [DO-214AC], patterns: ["(^|_)SMA($|_)", "DO-?214AC"]}
+  "SMB": {kind: diode, body: [4.3, 3.6], height: 2.4, pads: 2, polar: true, pickable: yes,
+          tape: {width: 12, pitch: 8}, tape_angle: null, nozzle: null, aliases: [DO-214AA], patterns: ["(^|_)SMB($|_)"]}
+  "SOT-23": {kind: transistor, body: [2.9, 1.3], height: 1.2, pads: 3, polar: true, pickable: yes,
+             tape: {width: 8, pitch: 4}, tape_angle: null, nozzle: null, patterns: ["^SOT-?23(-3)?($|_)"]}
+  "SOT-23-5": {kind: ic, body: [2.9, 1.6], height: 1.45, pads: 5, polar: true, pickable: yes,
+               tape: {width: 8, pitch: 4}, tape_angle: null, nozzle: null, patterns: ["^SOT-?23-5"]}
+  "SOT-23-6": {kind: ic, body: [2.9, 1.6], height: 1.45, pads: 6, polar: true, pickable: yes,
+               tape: {width: 8, pitch: 4}, tape_angle: null, nozzle: null, patterns: ["^SOT-?23-6"]}
+  "SOT-89": {kind: transistor, body: [4.5, 2.5], height: 1.6, pads: 3, polar: true, pickable: yes,
+             tape: {width: 12, pitch: 8}, tape_angle: null, nozzle: null, patterns: ["^SOT-?89"]}
+  "SOT-223": {kind: transistor, body: [6.5, 3.5], height: 1.8, pads: 4, polar: true, pickable: bottom_camera,
+              tape: {width: 12, pitch: 8}, tape_angle: null, nozzle: null, patterns: ["^SOT-?223"]}
+  "SOIC-8": {kind: ic, body: [4.9, 3.9], height: 1.75, pads: 8, polar: true, pickable: bottom_camera,
+             tape: {width: 12, pitch: 8}, tape_angle: null, nozzle: null, patterns: ["^SOIC-8($|_)", "^SO-8($|_)"]}
+  "SOP-8": {kind: ic, body: [4.9, 3.9], height: 1.75, pads: 8, polar: true, pickable: bottom_camera,
+            tape: {width: 12, pitch: 8}, tape_angle: null, nozzle: null, patterns: ["^SOP-8($|_)"]}
+  "SO-8C": {kind: ic, body: [4.9, 3.9], height: 1.75, pads: 7, polar: true, pickable: bottom_camera,
+            tape: {width: 12, pitch: 8}, tape_angle: null, nozzle: null}   # SO-8 with pin 6 removed (7 pins)
+  "SOIC-16W": {kind: ic, body: [10.3, 7.5], height: 2.65, pads: 16, polar: true, pickable: bottom_camera,
+               tape: {width: 16, pitch: 12}, tape_angle: null, nozzle: null, patterns: ["^SOIC-16_L10\\.3"]}
+  "SOIC-16": {kind: ic, body: [9.9, 3.9], height: 1.75, pads: 16, polar: true, pickable: bottom_camera,
+              tape: {width: 16, pitch: 8}, tape_angle: null, nozzle: null, patterns: ["^SOIC-16($|_)"]}
+  "SOP-4-opto": {kind: ic, body: [4.6, 6.5], height: 4.0, pads: 4, polar: true, pickable: bottom_camera,
+                 tape: {width: 16, pitch: 8}, tape_angle: null, nozzle: null,
+                 patterns: ["^OPTO-SMD-4"]}   # SMD optocouplers (4-pin, 2.54 mm pitch)
+  "LQFP-100": {kind: ic, body: [14.0, 14.0], height: 1.6, pads: 100, polar: true, pickable: by_hand,
+               tape: null, tape_angle: null, nozzle: null, patterns: ["^LQFP-100"]}   # 0.5 mm pitch: by hand for now
+  "crystal-3215": {kind: crystal, body: [3.2, 1.5], height: 0.9, pads: 2, polar: false, pickable: yes,
+                   tape: {width: 8, pitch: 4}, tape_angle: 90, nozzle: null,
+                   patterns: ["^CRYSTAL-SMD_L3\\.2-W1\\.5", "3215"]}
+  "tact-6x6-smd": {kind: switch, body: [6.0, 6.0], height: 5.0, pads: null, polar: false, pickable: by_hand,
+                   tape: null, tape_angle: null, nozzle: null, patterns: ["^SW-SMD_L6\\.0-W6\\.0"]}
+  "inductor-power-smd": {kind: inductor, body: [8.0, 8.0], height: 4.5, pads: 2, polar: false, pickable: by_hand,
+                         tape: null, tape_angle: null, nozzle: null, patterns: ["^IND-SMD_"]}   # heavy, big

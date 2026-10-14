@@ -15,6 +15,7 @@ from ui import app as ua  # noqa: E402
 from ui import engine as e  # noqa: E402
 import test_dry_run_bench as tdr  # noqa: E402
 import test_nozzle_calibrate as tnc  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
 pytest.importorskip("fastapi")
 
@@ -193,8 +194,8 @@ def test_the_job_needs_feeders_home_and_a_registered_board(board, tmp_path):
 
 def test_the_reach_is_measured_by_driving_to_the_four_ends(board, tmp_path, monkeypatch):
     (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "bench.yaml").write_text((ROOT / "config" / "bench.yaml").read_text())
-    monkeypatch.setattr(e.t, "ROOT", tmp_path)
+    (tmp_path / "config" / "bench.yaml").write_text((CONFIG_DIR / "bench.yaml").read_text())
+    monkeypatch.setattr(e.t, "BENCH_CONFIG", tmp_path / "config" / "bench.yaml")
     monkeypatch.setattr(e, "load_bench", lambda: yaml.safe_load((tmp_path / "config" / "bench.yaml").read_text()))
     m = make(board, tmp_path)
     m.job_reach_start()
@@ -325,3 +326,20 @@ def test_place_one_part_then_stop(board, tmp_path):
     m.assign(3, line_key(m, "1 uF", "C_0805"))
     m.job_run_one()
     assert len(m.world.placed) == 1 and m.job_info["done"] == 1 and "Stopped after 1" in m.messages[-2]
+
+
+@pytest.mark.parametrize("floor", [0.0, 1.75])
+def test_parts_in_the_printed_trays_lower_the_place_height(board, tmp_path, floor):
+    """bed.yaml feed_tray.tape_floor_mm: the tape lies that much above the bar (3D printed tray), the board does
+    not, so the place height (from the pick spot) comes down by it; the moving height stays 3 mm above the board."""
+    import copy
+    m = make(board, tmp_path, real=True)
+    m.bed = copy.deepcopy(m.bed)
+    m.bed.setdefault("feed_tray", {})["tape_floor_mm"] = floor
+    nz = e.load_bench()["nozzle"]
+    m.pick_mark = {"grbl_z": float(m.grbl.z), "xy": m.pos.copy()}
+    assert m.start_from_pick_mark()
+    place_up = float(nz["place_above_pick_mm"]) - floor
+    up = max(0.0, place_up) + float(nz["move_clearance_mm"])
+    assert m.cal["touch_place"]["z"] == pytest.approx(-up + place_up)
+    assert m.cal["touch_part"]["z"] == pytest.approx(-up + float(nz["press_mm"]))

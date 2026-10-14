@@ -235,7 +235,7 @@ def main() -> None:
     bed = e.ml.load_bed()
     labels = e.ml.make_all(bed)
     nominal = {name: np.array(c, float) for name, c, _ in e.ml.label_placements(bed, labels)}
-    out_dir = ROOT / "logs" / "pnp" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    out_dir = e.LOGS_DIR / "pnp" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     out_dir.mkdir(parents=True, exist_ok=True)
     cam = cr.open_camera(DEFAULT_CAMERA)
     camcfg = load_bench().get("camera") or {}

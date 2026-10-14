@@ -29,9 +29,11 @@ from pathlib import Path
 import serial
 from serial.tools import list_ports
 
+from pnp_paths import LOGS_DIR
+
 REALTIME = {"?", "!", "~"}
 SOFT_RESET = b"\x18"
-LOG_DIR = Path(__file__).resolve().parent.parent / "logs" / "console"
+LOG_DIR = LOGS_DIR / "console"
 
 
 def find_port() -> str:

@@ -11,6 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from ui import engine as e  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
 FRAME = (400, 640)
 CENTRE = np.array([(FRAME[1] - 1) / 2, (FRAME[0] - 1) / 2])
@@ -73,7 +74,7 @@ class SurveySim(e.PnPMachine):
 @pytest.fixture
 def files(tmp_path, monkeypatch):
     bed = tmp_path / "bed.yaml"
-    bed.write_text((ROOT / "config" / "bed.yaml").read_text())
+    bed.write_text((CONFIG_DIR / "bed.yaml").read_text())
     monkeypatch.setattr(e, "BED_FILE", bed)
     monkeypatch.setattr(e.t, "CAMERA_FILE", tmp_path / "camera_calibration.yaml")
     saved = {}
@@ -144,3 +145,15 @@ def test_pcb_area_and_layout_text():
     out = e.layout_text(text, {3: np.array([-29.46, -1.04])}, pcb, area, "2026-10-08")
     assert "    3: [-29.5, -1.0]\n    4: [1, 2]" in out and "pcb_area_xy: [-120.0, -230.0]  # x" in out
     assert yaml.safe_load(out)["layout"]["pcb_corner_marker_xy"][2] == [30.0, -80.0]
+
+
+def test_pcb_area_from_the_printed_corner_pieces():
+    """The board lies in the back-left L of the corner pieces (hardware/tray/pcb_corner.py)."""
+    holders = {"left_arm_mm": 29.3, "right_arm_mm": 22.0, "edge_mm": 8.5}
+    pcb = {"pcb_1": np.array([-147.9, -243.4]), "pcb_2": np.array([33.2, -243.4]),
+           "pcb_3": np.array([33.2, -103.4]), "pcb_4": np.array([-147.9, -103.4])}
+    area, info = e.pcb_area_from_labels(pcb, [130, 140], 10.0, 2.5, holders)
+    assert area == [-118.6, -234.9]                         # left edge 29.3 right of the bar, back edge at -94.9
+    assert info["gap_x_mm"] == pytest.approx(-0.2, abs=0.05)    # bars 181.1 apart: 129.8 between the arm ends
+    assert info["gap_y_mm"] == pytest.approx(0.0, abs=0.05)
+    assert info["square_deg"] == 0.0

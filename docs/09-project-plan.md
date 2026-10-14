@@ -108,6 +108,100 @@ Every failed or skipped part is logged.
 - [ ] Speed tuning (R6)
 - [ ] Board v2: add fiducials and fix the SMD attributes (see [11-target-board-ht5023.md](11-target-board-ht5023.md))
 
+## Software v2 (docs/13-build-prompt-v2.md §11)
+
+The universal program in `src/pnp/`, built phase by phase next to the bench tools (D24).
+
+### Phase A: base (built 2026-10-12)
+- [x] `src/pnp/` skeleton, `pyproject.toml`, `pnp serve | sim | doctor | portd | profile`
+- [x] Machine profile schema (pydantic, errors by field and line, migrations, TBD list) + `config/profiles/bench_uno.yaml` and `pico_grblhal.yaml`
+- [x] Capability interfaces (docs/13 §4.14) with real / none / simulator versions; the later ones say their phase
+- [x] Grbl / grblHAL driver: line protocol, status poll, watchdog, reset and ALARM events, jog with `$J=` (STOP = jog cancel, no position loss), axis map
+- [x] Reset seen across program restarts (session token in T) + port keeper `pnp portd` + HUPCL cleared (D22)
+- [x] One lock state with one message and one "what to do" (bug 16)
+- [x] Simulator: virtual Grbl (lost steps at the ends, resets, servo play, probe, switches, E-stop) + camera drawing the bed
+- [x] Service: FastAPI page (Machine, Doctor, Settings, Logs; Setup / Feeders / Board / Job say their phase), WebSocket with polling fallback, cache-busted files, profile reload without restart, systemd units (`deploy/systemd/`)
+- [x] Old tests on frozen fixtures, no test reads the live config (D25, bug 12); v2 tests in `tests/v2/`
+- [ ] **On the bench:** the page jogs the real machine (X, Y, Z, servo, pump), the axis directions match `bench_uno.yaml`, a restart of `pnp serve` keeps the position, unplugging the USB locks it
+- [ ] **On the bench:** the port keeper as a service (`deploy/systemd/README.md`)
+
+**Accept (docs/13 §11):** the page jogs the bench and the simulator; all old tests on fixtures and green.
+
+### Phase B: boards (built 2026-10-12)
+- [x] Board model (D26): board frame, rotation seen from the part's side, pads, holes, fiducials, saved as JSON
+- [x] KiCad `.kicad_pcb` importer without pcbnew (pads equal pcbnew's within 2 µm on the HT5023)
+- [x] Gerber X2 / X3 + Excellon + job file importer (also from a zip); Gerbers without X3 as a reference
+- [x] Centroid importer: KiCad .pos / .csv, Altium, EasyEDA (UTF-16), JLC-style, Eagle .mnt / .mnb, any CSV; column mapper; fit to a reference with a report
+- [x] Package library (`config/packages.yaml`, `packages.user.yaml`) and part classes: the HT5023 gives 148 machine, 12 bottom camera, 7 by hand (docs/11)
+- [x] Checks after an import (centre on pads, pads along the angle, pin 1, outline, duplicates); the Board tab preview (top / bottom view), parts list, thickness; `pnp import`
+- [x] **Accept:** the HT5023 imports from KiCad and from its Gerber X3 identically (all 206 parts, pads, holes, thickness; `tests/v2/test_v2_board.py`)
+- [ ] On the bench: the first bottom-side dry run confirms the bottom rule (D10 / D26) on the real board
+- [ ] Backlog: Eagle `.brd`, EasyEDA JSON, IPC-2581, ODB++; a real Altium / EasyEDA export to check their bottom rules
+
+### Phase C: vision (built 2026-10-12)
+- [x] Camera model (pinhole + lens bending + tilt, D28) and the ChArUco calibration: bed + block, head-move scale check, saved with its inputs; the sheet as a PDF (`/charuco.pdf`)
+- [x] Exposure: find once and lock (Machine tab, "Find and lock"); a light change is reported
+- [x] Bed markers measured through the model; camera homing on HOME (sim: 0.01 mm)
+- [x] Parts in a strip: straighten, sprocket-hole row, candidate → operator confirms the first part → template (D29); pick check
+- [x] Board registration: holes (two rims), outline corners, rigid fit, odd one out, reach (D30); the overlay on the live picture; click on the picture = go there (board height used on the board)
+- [x] Stall check from the camera model on every automatic move (D31)
+- [x] Camera-only dry run (`src/pnp/job/dryrun.py`)
+- [x] **Accept:** the fixtures from this bench pass (pick check, strips, holes, corners, markers: `tests/v2/test_v2_vision.py`); the sim 20-part dry run passes (20 of 20, picks and places within 0.1 mm, pads seen: `tests/v2/test_v2_machine_vision.py`)
+- [ ] **On the bench:** print the ChArUco sheet (both 100 mm bars = 100.0 mm), calibrate (bed + a measured block), home 10 times (R7), register the HT5023 B side up and check the drawn pads sit on the pads
+- [ ] **On the bench:** a dry run of a few parts from slot 3 (camera only)
+
+### Phase D: calibration wizard (built 2026-10-12)
+- [x] The wizard on the Setup tab: 10 steps from the profile's capabilities, each with valid / stale / missing, the reason, the date, "you / the machine / done when", actions and Undo (D32)
+- [x] Validity chain: results saved with their inputs and the dates of the results they are built on; Undo keeps 5 values
+- [x] Travel: stall-checked creep to each end, or "End here"; saved once, replaces the profile's travel
+- [x] Z reference: touch-off with 1 / 0.1 / 0.02 mm steps and a close-up of the tip (or the probe)
+- [x] Derived heights (D33); Z-down only over a known surface; X / Y never with the nozzle low
+- [x] Nozzle offset + runout from ink marks, pointer by eye, confirmation over 1 mm (D34)
+- [x] Rotation: the servo's pulse → angle table and repeat test from the marks; the servo uses it
+- [x] Bed survey (labels outside the travel measured off-centre, or said "not measured")
+- [x] First part: confirm the first part of the slot, pick (pocket check), turn, place, measure (D35), OK or move it by (dx, dy, dθ)
+- [x] Simulator: the nozzle (offset, runout, spring, ink, picking and placing parts, crashes counted)
+- [x] **Accept (sim):** the whole wizard from a cold machine to a first part placed within 0.15 mm (`tests/v2/test_v2_setup.py`, ~2 min of simulated work)
+- [ ] **On the bench:** a cold bench reaches "first part" through the page in ≤ 60 min (docs/13 §11). Before: measure the needle's spring travel (`spring_mm`, TBD) and put ink on the needle
+
+### Phase E: jobs and feeders (built 2026-10-12)
+- [x] Feeders as a list (`config/feeders.yaml`), marker allocation incl. the dictionary switch past 50, a marker used twice = error (D36)
+- [x] "Add tray": the STL (any number 1-99, 8 / 12 / 16 / 24 mm) or the paper label PDF; Remove tray; the reach check by the nozzle
+- [x] Load split by the reachable tray count, spare trays for long lines; the load sheet (Feeders tab)
+- [x] Plan with a reason for every part not placed by the machine; travel order; time estimate (D37)
+- [x] Runner: states, pick check (template, D39), place check (D35), refill, loads, HOME drift checks, reports with photos, retention
+- [x] STOP with a held part, place / pick again / drop over the tape; resume after a crash (D38)
+- [x] Pick test mode (N picks, every miss with its photos)
+- [x] Feeders tab and Job tab
+- [x] **Accept (sim):** a 7th tray added from the page is surveyed and used by the load split; a 20-part job over two loads; 100 picks ≥ 95 % with a refill (`tests/v2/test_v2_job.py`)
+- [ ] **On the bench:** 100 picks ≥ 95 % with photos; a 7th tray added from the page (docs/13 §11)
+
+### Phase E2: parts store and hand assembly (built 2026-10-12)
+- [x] Lines from the one Board model; drawers by the old page's dynamic program (the HT5023: the same 94 lines and drawers, checked); moves, links and quantities on the server (D40)
+- [x] Bag scan: LCSC QR / number / MPN / links -> "tray N" or "drawer D, by hand"; scan to load a tray (the bag decides the line)
+- [x] The Hand tab: passes Top SMD -> Bottom SMD -> THT, drawers, search, Enter / F / S / D keys, USB scanner anywhere, camera QR (ZXing / jsQR shipped)
+- [x] One placed state for the machine and the hand view; the import of Solder Helper's old progress
+- [x] Labels: PT-D410 one strip with cut marks (or separate), A4 PDF
+- [ ] **On the bench:** the HT5023 from bags to a finished board in one program (docs/13 §11); drawer labels printed on the PT-D410
+
+### Phase F: support (built 2026-10-12)
+- [x] Doctor: every calibration of the chain, exposure, labels in view, survey, an unfinished job (D41)
+- [x] Export / import bundle (page and `pnp export` / `pnp restore`), safe restore
+- [x] Install: defaults in the package, `pnp init`, the wheel contains the page, the decoders and the defaults (checked)
+- [x] User docs (`docs/user/`) and builder docs (`docs/builder/`)
+- [ ] **On the bench / second person:** installs it from the README and runs a dry run (docs/13 §11)
+
+### Phase G: backlog (owner: "build all", built 2026-10-14)
+- [x] Bottom camera: Setup step 5b, every part looked at from below, bottom-camera parts become machine parts (D42)
+- [x] XY switches: Setup step 2 = the switch test and the travel from $130/$131; stepper rotation: Setup step 6 (D43)
+- [x] Valve + vacuum sensor (Setup step 6b; the pick check asks it first); head light with an exposure per state (D44)
+- [x] Nozzle changes in a job; offsets per nozzle (D45)
+- [x] Matrix trays and sticks (D46)
+- [x] Panels: several boards in one job (D47)
+- [ ] TBD, needs the hardware first: how the controller reports the vacuum sensor; the nozzle rack's positions and moves;
+      a motorized reel feeder; the picamera2 driver tested on a Pi
+- [ ] **On the bench:** each item when its hardware exists (docs/builder/upgrades.md)
+
 ## Risks
 
 | # | Risk | Effect | How to reduce it |

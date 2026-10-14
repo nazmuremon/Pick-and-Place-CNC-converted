@@ -9,8 +9,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import camera_square_check as csc  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
-CFG = yaml.safe_load((ROOT / "config" / "bench.yaml").read_text())["camera_square"]
+CFG = yaml.safe_load((CONFIG_DIR / "bench.yaml").read_text())["camera_square"]
 F_PX = 330.0          # focal length in px: about 8.5 px/mm at 39 mm above the bed
 HEIGHT = 39.0         # mm, lens above the bed
 CENTRE = np.array([319.5, 199.5])

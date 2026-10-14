@@ -1,0 +1,61 @@
+# FROZEN TEST COPY of config/smd_identify.yaml, taken 2026-10-12. Only the tests read it (tests/conftest.py copies it to
+# a temporary folder for every test run). Never update it from the calibration tools or by copying the live
+# file again: change a value here only together with the test that needs it.
+# Settings for tools/smd_identify.py (the "which SMD part is this?" demo).
+# Units: mm. Change numbers here, not in the code.
+
+# The printed sheet (make it with: python tools/smd_identify.py --make-sheet).
+# 4 ArUco markers sit at the corners of a rectangle. Parts go on the white area between them.
+sheet:
+  dictionary: DICT_4X4_50
+  marker_ids: [20, 21, 22, 23]   # top-left, top-right, bottom-right, bottom-left
+  marker_size_mm: 10
+  area_mm: [70, 45]              # outer size of the marker rectangle (fits a ~100 x 63 mm camera view)
+
+detection:
+  rect_px_per_mm: 20             # resolution of the straightened (top-down) work area image
+  threshold: 0.15                # a pixel is "part" if it differs from the paper by more than 15 %
+  close_mm: 0.4                  # joins a part's metal ends to its body
+  open_mm: 0.15                  # removes specks of dust and noise
+  background_window_mm: 25       # the paper brightness is measured over this window
+  edge_margin_mm: 1.5            # parts touching the edge of the work area are ignored
+  marker_margin_mm: 2.0          # and so are parts touching a marker
+  edge_bias_px: 0.7              # blur makes parts look bigger: take this much off each side (camera pixels)
+  min_area_mm2: 0.25
+  max_area_mm2: 400
+  match_tolerance: 0.25          # largest size error (relative) that still counts as a match
+  dark_top_ratio: 0.45           # chip part darker than this (vs the paper) -> "resistor?"
+  smoothing: 0.5                 # 0 = none. Averages frames to reduce noise
+  low_resolution_px_per_mm: 10   # show a warning below this camera resolution
+
+# Outline seen from the TOP, including leads and metal ends (not the body only).
+# size_mm = [length, width]. Nominal values: check the datasheet of your part.
+# kind "chip" also gets a resistor/capacitor hint from the body brightness.
+packages:
+  - {name: "0402",              kind: chip,  size_mm: [1.0, 0.5]}
+  - {name: "0603",              kind: chip,  size_mm: [1.6, 0.8]}
+  - {name: "0805",              kind: chip,  size_mm: [2.0, 1.25]}
+  - {name: "1206",              kind: chip,  size_mm: [3.2, 1.6]}
+  - {name: "1210",              kind: chip,  size_mm: [3.2, 2.5]}
+  - {name: "2010",              kind: chip,  size_mm: [5.0, 2.5]}
+  - {name: "2512",              kind: chip,  size_mm: [6.35, 3.2]}
+  - {name: "Crystal 3215",      kind: other, size_mm: [3.2, 1.5]}
+  - {name: "SOD-323",           kind: other, size_mm: [2.5, 1.3]}
+  - {name: "SOD-123",           kind: other, size_mm: [3.7, 1.6]}
+  - {name: "SMA (DO-214AC)",    kind: other, size_mm: [5.0, 2.6]}
+  - {name: "SMB (DO-214AA)",    kind: other, size_mm: [5.4, 3.6]}
+  - {name: "SOT-23",            kind: other, size_mm: [2.9, 2.4]}
+  - {name: "SOT-23-6",          kind: other, size_mm: [2.9, 2.8]}
+  - {name: "SOT-89",            kind: other, size_mm: [4.5, 4.1]}
+  - {name: "SOT-223",           kind: other, size_mm: [7.0, 6.5]}
+  - {name: "SOIC-8 / SOP-8",    kind: other, size_mm: [6.0, 4.9]}
+  - {name: "SOIC-16 narrow",    kind: other, size_mm: [9.9, 6.0]}
+  - {name: "SOIC-16 wide",      kind: other, size_mm: [10.3, 10.3]}
+  - {name: "SOP-4 opto",        kind: other, size_mm: [7.0, 4.4]}    # check your part
+  - {name: "Opto SMD-4 (DIP-4)", kind: other, size_mm: [10.0, 4.6]}
+  - {name: "LQFP-48 (7x7)",     kind: other, size_mm: [9.0, 9.0]}
+  - {name: "LQFP-64 (10x10)",   kind: other, size_mm: [12.0, 12.0]}
+  - {name: "LQFP-100 (14x14)",  kind: other, size_mm: [16.0, 16.0]}
+  - {name: "Tact switch 6x6",   kind: other, size_mm: [9.0, 6.0]}    # check your part
+  - {name: "Inductor 7x7 (L4)", kind: other, size_mm: [7.1, 6.6]}
+  - {name: "Inductor 8x8 (L3)", kind: other, size_mm: [8.0, 8.0]}

@@ -12,8 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import nozzle_calibrate as nc  # noqa: E402
 import test_dry_run_bench as tdr  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
-BENCH = yaml.safe_load((ROOT / "config" / "bench.yaml").read_text())
+BENCH = yaml.safe_load((CONFIG_DIR / "bench.yaml").read_text())
 SHAFT = np.array([12.0, -3.0])          # true servo shaft: camera centre + this (mm)
 RUNOUT = np.array([0.3, 0.0])           # the needle tip sits 0.3 mm off the shaft (at angle 0)
 OD = 0.91                               # 20G needle

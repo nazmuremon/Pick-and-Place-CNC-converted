@@ -19,8 +19,10 @@ import serial
 import yaml
 from serial.tools import list_ports
 
+from pnp_paths import CONFIG_DIR, LOGS_DIR
+
 ROOT = Path(__file__).resolve().parents[1]
-BENCH_CONFIG = ROOT / "config" / "bench.yaml"
+BENCH_CONFIG = CONFIG_DIR / "bench.yaml"
 GRBL_AXES = "XYZ"
 
 
@@ -28,7 +30,7 @@ def load_bench(path: Path = BENCH_CONFIG) -> dict:
     return yaml.safe_load(path.read_text())
 
 
-STATE_FILE = ROOT / "logs" / "nozzle_state.yaml"
+STATE_FILE = LOGS_DIR / "nozzle_state.yaml"
 
 
 def mark_parked(parked: bool, by: str) -> None:

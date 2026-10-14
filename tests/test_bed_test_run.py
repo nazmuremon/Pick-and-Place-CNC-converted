@@ -11,10 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import bed_test_run as t  # noqa: E402
 import make_labels as ml  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
 J_TRUE = np.array([[-7.45, 0.0], [0.0, 7.48]])   # raw picture seen from the front: px per mm of head move
 FRAME = (400, 640)
-BENCH_SEARCH = yaml.safe_load((ROOT / "config" / "bench.yaml").read_text())["label_search"]
+BENCH_SEARCH = yaml.safe_load((CONFIG_DIR / "bench.yaml").read_text())["label_search"]
 # The bed's look (bars, board, dirt) for the picture-shift check: 2 px per mm, from X -100 / Y -300 mm.
 TEXTURE = cv2.GaussianBlur(np.random.default_rng(7).uniform(0, 255, (1000, 1000)).astype(np.float32), (0, 0), 2)
 
@@ -27,7 +28,7 @@ class SimMachine(t.Machine):
         self.nominal, self.out_dir = nominal, tmp_path
         self.max_step = 10.0
         self.feed = 300.0
-        self.reach = yaml.safe_load((ROOT / "config" / "bench.yaml").read_text())["limits"]["reach_from_home"]
+        self.reach = yaml.safe_load((CONFIG_DIR / "bench.yaml").read_text())["limits"]["reach_from_home"]
         self.pos = np.array(start, float)
         self.true_pos = self.pos.copy()
         self.home = self.J = self.extremes = None
@@ -261,7 +262,7 @@ def test_saving_the_reach_clears_the_stale_flag(tmp_path, monkeypatch):
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "bench.yaml").write_text(
         "limits:\n  reach_from_home:\n    x: [-154, -4]\n    y: [-227, 3]\n  reach_stale: true\n")
-    monkeypatch.setattr(t, "ROOT", tmp_path)
+    monkeypatch.setattr(t, "BENCH_CONFIG", tmp_path / "config" / "bench.yaml")
     t.save_reach(np.array([-150.0, -6.0, -220.0, 25.0]))
     cfg = yaml.safe_load((tmp_path / "config" / "bench.yaml").read_text())["limits"]
     assert cfg["reach_from_home"] == {"x": [-150, -6], "y": [-220, 25]} and cfg["reach_stale"] is False

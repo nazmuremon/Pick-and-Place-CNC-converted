@@ -71,12 +71,13 @@ import camera_rectify as cr
 import dry_run_bench as d
 import make_labels as ml
 from bench import Grbl, GrblError, load_bench, mark_parked, was_parked
+from pnp_paths import CONFIG_DIR, LOGS_DIR
 from servo_pump_test import firmware_ok
 from smd_identify import DEFAULT_CAMERA
 
 ROOT = Path(__file__).resolve().parents[1]
-CAL_FILE = ROOT / "config" / "nozzle_calibration.yaml"
-LOG_DIR = ROOT / "logs" / "nozzle_cal"
+CAL_FILE = CONFIG_DIR / "nozzle_calibration.yaml"
+LOG_DIR = LOGS_DIR / "nozzle_cal"
 WINDOW = "Nozzle calibration"
 ARROWS = {65361: (-1, 0), 65363: (1, 0), 65362: (0, 1), 65364: (0, -1)}   # left, right, up = back, down = front
 # Only to tell a part turned by a from one turned by a + 180 deg (its outline looks the same): the 270 deg

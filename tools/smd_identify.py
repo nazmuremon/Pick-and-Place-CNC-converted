@@ -22,11 +22,13 @@ import cv2
 import numpy as np
 import yaml
 
+from pnp_paths import CONFIG_DIR, LOGS_DIR
+
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "smd_identify.yaml"
+DEFAULT_CONFIG = CONFIG_DIR / "smd_identify.yaml"
 DEFAULT_SHEET = ROOT / "hardware" / "print" / "smd_identify_sheet.pdf"
 DEFAULT_CAMERA = "/dev/v4l/by-id/usb-Xitech_Mono_Camera_20240601105-video-index0"
-SNAPSHOT_DIR = ROOT / "logs" / "smd_identify"
+SNAPSHOT_DIR = LOGS_DIR / "smd_identify"
 
 
 @dataclass

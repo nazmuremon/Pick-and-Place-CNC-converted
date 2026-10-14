@@ -1,0 +1,135 @@
+# FROZEN TEST COPY of config/nozzle_calibration.yaml, taken 2026-10-12. Only the tests read it (tests/conftest.py copies it to
+# a temporary folder for every test run). Never update it from the calibration tools or by copying the live
+# file again: change a value here only together with the test that needs it.
+# Written by tools/nozzle_calibrate.py. Positions in mm from HOME (+X right, +Y back);
+# Z in mm from where the program started (down is negative). See docs/08-calibration.md.
+z_reference:
+  label: null
+  px_mm: null
+  f_mm: null
+  id: '2026-10-11T12:35:23'
+  z_steps_per_mm: '402.000'
+  needle_od_mm: 0.72
+  camera_rectify: null
+  camera_moves_with_z: false
+  note: Z0 = the moving height, 4.9 mm above the pick spot the owner set (the camera
+    does not move with Z)
+touch_move:
+  z: 0.0
+  ref: '2026-10-11T12:35:23'
+  by: pick spot (nozzle tip on a part)
+  date: '2026-10-11T12:35:23'
+z:
+  f_mm: -30111.408
+  slope: -3.32100048299115e-05
+  camera_height_mm: -3627.63
+  straight_within_mm: 20.671
+  play_mm: 29.635
+  repeat_mm: null
+  points:
+  - - 0.0
+    - 8.26891
+  - - -1.0
+    - 8.30046
+  - - -2.0
+    - 8.33992
+  - - -3.0
+    - 8.32698
+  - - -4.0
+    - 8.24451
+  - - -2.0
+    - 8.35124
+  - - 0.0
+    - 8.33675
+  date: '2026-10-08T11:11:40'
+  note: '1 / (HOME label px per mm) = (camera_height + Z) / f: a scale change -> Z
+    change'
+touch_part:
+  z: -4.6
+  ref: '2026-10-11T12:35:23'
+  by: pick spot (nozzle tip on a part)
+  date: '2026-10-11T12:35:23'
+touch_place:
+  z: -3.0
+  ref: '2026-10-11T12:35:23'
+  by: pick spot (nozzle tip on a part)
+  date: '2026-10-11T12:35:23'
+  note: pick spot + nozzle.place_above_pick_mm
+offset_pick:
+  xy:
+  - 5.625
+  - 28.293
+  by: nozzle pointer by eye
+  ref: '2026-10-11T12:35:23'
+  date: '2026-10-11T16:57:15'
+offset_guess_mm:
+- 5.6
+- 28.3
+offset_place:
+  xy:
+  - 5.625
+  - 28.293
+  by: moved like the pick offset (nozzle pointer by eye)
+  ref: '2026-10-11T12:35:23'
+  date: '2026-10-11T16:57:15'
+ink_xy_from_home:
+- -29.44
+- -97.74
+paper_xy_from_home:
+- -33.39
+- -146.04
+touch_paper:
+  z: -5.0
+  ref: '2026-10-11T12:35:23'
+  date: '2026-10-11T12:53:52'
+offset:
+  by_pulse_us:
+    900:
+    - 5.629
+    - 31.522
+    1200:
+    - 5.482
+    - 29.407
+    1500:
+    - 4.966
+    - 29.439
+    1800:
+    - 4.534
+    - 28.971
+    2100:
+    - 3.478
+    - 29.286
+  shaft_xy:
+  - 4.344
+  - 30.602
+  runout_mm: 1.558
+  repeat_mm: 1.324
+  ref: '2026-10-11T12:35:23'
+  date: '2026-10-11T13:28:14'
+  note: 'ink marks on paper: nozzle tip = camera centre + offset; shaft = the servo
+    axis'
+servo:
+  pulse_to_turn_deg:
+  - - 900
+    - 97.46
+  - - 1200
+    - 15.45
+  - - 1500
+    - 0.0
+  - - 1800
+    - -21.5
+  - - 2100
+    - -61.47
+  fit:
+    deg_per_us: -0.11827
+    offset_deg: 5.989
+    worst_deg: 26.016
+  by: ink marks around the servo axis (the needle is off the axis)
+  repeat_mm:
+    1500: 0.318
+    1200: 1.324
+    1800: 0.339
+  approach_us: 200.0
+  date: '2026-10-11T13:28:14'
+  note: turn of the nozzle from the pick at 1500 us (the centre), in degrees, + =
+    anticlockwise seen from above

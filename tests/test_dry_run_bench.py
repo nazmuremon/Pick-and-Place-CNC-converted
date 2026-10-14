@@ -15,11 +15,12 @@ sys.path.insert(0, str(ROOT / "tools"))
 import bed_test_run as t  # noqa: E402
 import dry_run_bench as d  # noqa: E402
 import make_labels as ml  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
 J_TRUE = np.array([[-7.26, -0.49], [-0.47, 7.40]])   # px per mm of head move, camera turned ~3.8 deg (bench)
 FRAME = (400, 640)
 CENTRE = np.array([(FRAME[1] - 1) / 2, (FRAME[0] - 1) / 2])
-BENCH = yaml.safe_load((ROOT / "config" / "bench.yaml").read_text())
+BENCH = yaml.safe_load((CONFIG_DIR / "bench.yaml").read_text())
 BED = ml.load_bed()
 ZONE = ml.slot_zone_mm(BED)
 U_DIR, V_DIR = np.array([0.0, -1.0]), np.array([-1.0, 0.0])   # slot labels run to the front; v points left

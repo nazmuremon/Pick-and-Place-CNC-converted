@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pick and Place</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%232f7de1'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css?v=__V__">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><b>PnP</b> <span id="profileName">…</span> <span id="simBadge" class="badge sim" hidden>SIMULATOR</span></div>
+  <a id="banner" class="banner off" href="#machine">
+    <b id="bTitle">Starting…</b>
+    <span id="bTodo"></span>
+  </a>
+  <button id="stopBtn" class="stop" title="STOP: cancels the move at once (space bar)">STOP</button>
+</header>
+<div id="linkLost" class="linklost" hidden>The page lost its link to the machine program. Reconnecting…</div>
+<div id="updated" class="linklost info" hidden>The page was updated. <button id="reloadBtn">Reload the page</button></div>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="machine" class="on">Machine</button>
+  <button data-tab="setup">Setup</button>
+  <button data-tab="feeders">Feeders</button>
+  <button data-tab="board">Board</button>
+  <button data-tab="job">Job</button>
+  <button data-tab="hand">Hand</button>
+  <button data-tab="doctor">Doctor</button>
+  <button data-tab="settings">Settings</button>
+  <button data-tab="logs">Logs</button>
+  <button id="helpBtn" class="help" title="Keyboard shortcuts (?)">?</button>
+</nav>
+
+<main>
+<!-- ============================================================ Machine -->
+<section id="tab-machine" class="tab on">
+  <div class="grid">
+    <div class="col">
+      <div class="card cam">
+        <div class="camwrap" id="camwrap">
+          <img id="video" alt="Live picture of the head camera">
+          <svg id="overlay" aria-hidden="true"></svg>
+          <div id="noVideo" class="novideo" hidden>No camera picture</div>
+        </div>
+        <div id="modeLine" class="mode"></div>
+        <div class="row"><label><input id="ovShow" type="checkbox" checked> Draw the registered board on the picture</label></div>
+      </div>
+      <div class="card">
+        <h3>Bed map <small>mm from HOME, back at the top</small></h3>
+        <svg id="map" class="map" aria-label="Bed map"></svg>
+        <div class="legend"><span class="lg travel"></span>travel <span class="lg pcb"></span>board area
+          <span class="lg head"></span>head <span id="lgSim" hidden><span class="lg ghost"></span>real head (simulator)</span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h3>Position</h3>
+        <div class="pos">
+          <div><small>X</small><b id="pX">–</b></div>
+          <div><small>Y</small><b id="pY">–</b></div>
+          <div><small>Z</small><b id="pZ">–</b></div>
+        </div>
+        <div class="sub" id="posNote"></div>
+        <div class="sub" id="rawLine"></div>
+      </div>
+
+      <div class="card">
+        <h3>Jog</h3>
+        <div class="row"><span class="lbl">X / Y step</span>
+          <div class="chips" id="stepXY">
+            <button data-v="0.1">0.1</button><button data-v="1">1</button><button data-v="5" class="on">5</button>
+            <button data-v="10">10</button><button data-v="30">30</button></div><span class="unit">mm</span></div>
+        <div class="jog">
+          <div class="pad">
+            <span></span><button data-jog="0,1" title="Back (+Y) · ↑">▲</button><span></span>
+            <button data-jog="-1,0" title="Left (−X) · ←">◀</button><span class="dot"></span><button data-jog="1,0" title="Right (+X) · →">▶</button>
+            <span></span><button data-jog="0,-1" title="Front (−Y) · ↓">▼</button><span></span>
+          </div>
+          <div class="zcol">
+            <button data-jz="1" title="Z up · Page Up">Z ▲</button>
+            <div class="chips vert" id="stepZ">
+              <button data-v="0.02">0.02</button><button data-v="0.05">0.05</button><button data-v="0.1">0.1</button><button data-v="0.5">0.5</button>
+              <button data-v="1" class="on">1</button><button data-v="5">5</button></div>
+            <button data-jz="-1" title="Z down · Page Down">Z ▼</button>
+          </div>
+        </div>
+        <div class="row goto"><span class="lbl">Go to</span>
+          <label>X <input id="gx" type="number" step="0.1" inputmode="decimal"></label>
+          <label>Y <input id="gy" type="number" step="0.1" inputmode="decimal"></label>
+          <button id="gotoBtn">Go</button></div>
+      </div>
+
+      <div class="card">
+        <h3>Home and Z</h3>
+        <div class="row"><button id="homeBtn" class="primary">Home</button><span class="note" id="homeNote"></span></div>
+        <div class="row"><span class="lbl">The tip touches</span>
+          <label><input id="zSurface" type="number" step="0.01" value="0" inputmode="decimal"> mm</label>
+          <span class="note">above the reference surface (0 = the bed labels)</span></div>
+        <div class="row"><button id="setZBtn">Set Z here</button><span class="note" id="zNote"></span></div>
+        <div class="row recover" id="recoverRow" hidden>
+          <button id="unlockBtn" class="warn">Unlock alarm</button>
+          <button id="clearBtn" class="warn">Nozzle is clear</button>
+          <span class="note">Only when the nozzle is lifted clear of everything</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Nozzle</h3>
+        <div class="row"><span class="lbl">Turn to</span>
+          <div class="chips" id="turnChips">
+            <button data-deg="-90">−90°</button><button data-deg="0">0°</button><button data-deg="90">90°</button>
+            <button data-deg="180">180°</button></div>
+          <label><input id="turnDeg" type="number" step="1" value="0" inputmode="decimal">°</label>
+          <button id="turnBtn">Turn</button><button id="limpBtn" title="Servo limp (no pulses)">Limp</button></div>
+        <div class="sub" id="rotNote"></div>
+        <div class="row"><span class="lbl">Pump</span>
+          <button id="pumpOn">On</button><button id="pumpOff">Off</button><span class="state" id="pumpState"></span></div>
+        <div class="row" id="lightsRow"></div>
+      </div>
+
+      <div class="card">
+        <h3>Controller and camera</h3>
+        <div class="row"><button id="connectBtn">Connect</button><button id="disconnectBtn">Disconnect</button>
+          <button id="resumeBtn" title="Resume after a feed hold (~)">Resume</button></div>
+        <div class="sub" id="ctlLine"></div>
+        <div class="row"><span class="lbl">Exposure</span>
+          <label><input id="expo" type="number" step="1" min="1" inputmode="decimal"></label>
+          <button id="expoBtn">Set</button><button id="expoAuto" title="The camera's own auto exposure (not for measuring)">Camera auto</button>
+          <button id="expoLock" title="Find a good exposure once, then keep it fixed (for measuring)">Find and lock</button></div>
+      </div>
+      <div class="card" id="simCard" hidden>
+        <h3>Simulator <small>make something happen, to practise the recovery</small></h3>
+        <div class="row"><button data-sim="power_cycle">Power dip</button><button data-sim="estop">Press E-stop</button>
+          <button data-sim="release_estop">Release E-stop</button></div>
+        <div class="row"><span class="lbl">Props</span><button data-sim="charuco">Calibration sheet on the bed</button>
+          <button data-sim="charuco_block">Sheet on a 5 mm block</button><button data-sim="charuco_off">Take the sheet away</button></div>
+        <div class="row"><span class="lbl"></span><button data-sim="board">Board, bottom up</button>
+          <button data-sim="board_F">Board, top up</button><button data-sim="strip">Tape strip in slot 3</button></div>
+        <div class="sub" id="simTruth"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ Setup -->
+<section id="tab-setup" class="tab">
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <h3>Set-up <small>do the steps in order; a step greys out until the steps it needs are valid</small></h3>
+        <div class="sub" id="wizSummary"></div>
+        <div class="legend"><span class="st valid">valid</span> measured, still true · <span class="st stale">stale</span>
+          something it depends on changed · <span class="st missing">missing</span> not done yet</div>
+      </div>
+      <div id="wizard"></div>
+    </div>
+    <div class="col">
+      <div class="card sticky">
+        <h3>Close-up <small>around the nozzle tip (the blue ring)</small></h3>
+        <canvas id="closeup" width="320" height="200" aria-label="Close-up of the live picture around the nozzle tip"></canvas>
+        <div class="row"><span class="lbl">Z step</span>
+          <div class="chips" id="cuStep"><button data-v="1">1</button><button data-v="0.1" class="on">0.1</button><button data-v="0.02">0.02</button></div>
+          <button id="cuUp" title="Z up">Z ▲</button><button id="cuDown" title="Z down">Z ▼</button></div>
+        <div class="sub" id="cuPos"></div>
+        <p class="note">Touch-off: go down in 1 mm steps until the tip is close, then 0.1, then 0.02, until the tip
+          just touches (the needle's spring starts to give). Then press "Set Z here" in step 4.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ later tabs -->
+<section id="tab-feeders" class="tab">
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <h3>Trays <small id="fDict"></small> <button id="fRefresh" class="small">Refresh</button></h3>
+        <div class="tablewrap"><table class="parts" id="fTrays"></table></div>
+        <p class="note">Reach is by the NOZZLE (the travel shifted by the nozzle offset): "camera only" trays can be seen
+          but not picked from. A new or moved tray needs a bed survey (Setup, step 8).</p>
+      </div>
+      <div class="card">
+        <h3>Load sheet <small id="fLoadNote"></small></h3>
+        <div id="fLoads" class="sub">Register the board first (Board tab).</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card">
+        <h3>Load a tray</h3>
+        <div class="row"><span class="lbl">Tray</span><label><input id="lTray" type="number" min="1" max="99" step="1"></label>
+          <span class="lbl">Line</span><select id="lLine"></select></div>
+        <div class="row"><button id="lLoad">Strip is in: look at it</button><button id="lRefilled">Refilled (same line)</button></div>
+        <div id="lCand" class="winfo" hidden><div id="lCandText"></div><img id="lCandImg" alt="The first part found in the tray" style="max-width:100%">
+          <div class="row"><button id="lYes">Yes, a part</button><button id="lNo">No</button></div></div>
+        <p class="note">The camera checks the size, never the value: the line you choose here is the truth (R5). The first
+          part of every strip is shown to you for a yes / no.</p>
+      </div>
+      <div class="card">
+        <h3>Add a tray <small>docs/13 §4.4.1: print it, put it on the bed, survey</small></h3>
+        <div class="row"><span class="lbl">Number</span><label><input id="aNum" type="number" min="1" max="99" step="1"></label>
+          <span class="lbl">Tape</span><select id="aTape"><option>8</option><option>12</option><option>16</option><option>24</option></select> mm
+          <select id="aKind"><option value="paper">paper</option><option value="embossed">embossed</option></select></div>
+        <div class="row"><span class="lbl">Kind</span><select id="aType"><option value="holder">3D printed holder (STL)</option>
+          <option value="paper_label">paper label (PDF)</option><option value="matrix">matrix tray (a grid of pockets)</option>
+          <option value="stick">stick (a tube to one pick point)</option></select>
+          <span class="lbl">Zone</span><label><input id="aZone" type="number" value="60" min="20" max="200" step="1"> mm</label></div>
+        <div class="row"><span class="lbl">Put at</span><label>X <input id="aX" type="number" step="0.5"></label>
+          <label>Y <input id="aY" type="number" step="0.5"></label> <small>mm from HOME (the marker's centre)</small></div>
+        <div class="row" id="aGrid" hidden><span class="lbl">Grid</span>
+          <label>rows <input id="aRows" type="number" min="1" max="20" value="1"></label>
+          <label>cols <input id="aCols" type="number" min="1" max="40" value="5"></label>
+          <label>pitch <input id="aPu" type="number" step="0.1" value="4"> × <input id="aPv" type="number" step="0.1" value="4"> mm</label>
+          <label>first pocket <input id="aFu" type="number" step="0.1" value="22"> mm from the marker</label>
+          <label>parts sit at <input id="aFloor" type="number" step="0.05"> mm</label>
+          <label>its top (marker) <input id="aTop" type="number" step="0.05"> mm</label>
+          <small>heights above the label surface: measure them</small></div>
+        <div class="row"><button id="aAdd">Add tray</button></div>
+        <div id="aOut" class="sub"></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="tab-board" class="tab">
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <h3>Board <small id="bShowing"></small></h3>
+        <div class="row">
+          <div class="chips" id="bSide"><button data-side="F" class="on">Top</button><button data-side="B">Bottom (seen from below)</button></div>
+          <button id="bFit" class="small" title="Show the whole board">Whole board</button>
+        </div>
+        <svg id="bsvg" class="boardview" aria-label="Board preview"></svg>
+        <div class="legend" id="bLegend"></div>
+        <div class="sub" id="bHover">Point at a part to see it. Wheel = zoom, drag = move.</div>
+      </div>
+      <div class="card">
+        <h3>Parts <select id="bFilter"><option value="">all</option></select></h3>
+        <div class="tablewrap"><table class="parts" id="bParts"></table></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card">
+        <h3>Import a board</h3>
+        <p class="note">A KiCad <code>.kicad_pcb</code>; or Gerbers with the X3 component (position) files, a
+          <code>.zip</code> is fine; or a centroid file (<code>.csv .pos .txt .mnt</code>), with the Gerbers or the current
+          board as the reference for the outline and the pads.</p>
+        <div class="row"><input type="file" id="bFiles" multiple><button id="bUpload" class="primary">Import</button></div>
+        <div id="bResult"></div>
+        <div id="bMapper" hidden>
+          <h4>Centroid columns <small id="bTool"></small></h4>
+          <div class="mapper" id="bCols"></div>
+          <div class="row"><span class="lbl">Units</span><select id="bUnits"><option>mm</option><option>mil</option><option>inch</option></select>
+            <label><input type="checkbox" id="bYup"> Y up</label>
+            <label><input type="checkbox" id="bNegX"> bottom X written as −X</label></div>
+          <div class="row"><span class="lbl">Bottom angle</span><select id="bRule"></select></div>
+          <div class="row"><span class="lbl">Top angle +</span><select id="bTopOff"><option>0</option><option>90</option><option>180</option><option>-90</option></select>
+            <span class="lbl">Origin</span><label>X <input id="bOx" type="number" step="0.001"></label><label>Y <input id="bOy" type="number" step="0.001"></label></div>
+          <div class="row"><button id="bApply">Apply these settings</button><button id="bRefit">Fit to the reference</button></div>
+        </div>
+        <div class="row" id="bSaveRow" hidden><label>Name <input id="bName" type="text" size="18"></label>
+          <button id="bSave" class="primary">Use this board</button><button id="bDiscard">Discard</button></div>
+      </div>
+      <div class="card">
+        <h3>Board on the machine <small>registration, docs/13 §4.6</small></h3>
+        <p class="note">Put the board in the board area. Say which side is up and where its top edge points (the
+          holes and corners can't tell: a board turned round fits them just as well). The head then looks at the
+          holes and corners it can reach.</p>
+        <div class="row"><span class="lbl">Side up</span><select id="rSide"><option value="B">Bottom (B)</option><option value="F">Top (F)</option></select>
+          <span class="lbl">Top edge to</span><select id="rEdge"><option value="back">the back</option><option value="front">the front</option>
+          <option value="left">the left</option><option value="right">the right</option></select>
+          <button id="rBtn">Register</button></div>
+        <div class="row"><span class="lbl">Panel</span><label>copy <input id="rCopy" type="number" min="1" max="20" step="1" value="1"></label>
+          <label>centre X <input id="rX" type="number" step="0.5"></label><label>Y <input id="rY" type="number" step="0.5"></label>
+          <small>copy 2, 3, …: another board of the same kind, with where its middle lies (mm from HOME)</small></div>
+        <div class="sub" id="rLine"></div>
+        <p class="note">Then look at the live picture (Machine tab): the drawn pads must sit on the board's pads.
+          Click a part's place on the picture to go there.</p>
+        <h3>Check before the first place</h3>
+        <ul class="issues" id="bIssues"></ul>
+      </div>
+      <div class="card">
+        <h3>Current board</h3>
+        <div id="bCurrent" class="sub">No board yet: import one.</div>
+        <div class="row"><span class="lbl">Thickness</span><label><input id="bThick" type="number" step="0.01" min="0.2" max="5"> mm</label>
+          <button id="bThickSet">Set</button><span class="note" id="bThickFrom"></span></div>
+        <div class="row"><span class="lbl">Saved boards</span><select id="bNames"></select><button id="bUse">Use</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="tab-job" class="tab">
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <h3>Plan <button id="jPlanBtn" class="small">Plan again</button></h3>
+        <div id="jPlan" class="sub">Register the board first (Board tab).</div>
+        <details><summary>Not placed by the machine, and why</summary><div class="tablewrap"><table class="parts" id="jSkipped"></table></div></details>
+      </div>
+      <div class="card">
+        <h3>Job <small id="jStatus"></small></h3>
+        <div class="row"><span class="lbl">Mode</span><select id="jMode"><option value="real">Pick and place</option>
+          <option value="dry">Dry run (camera only)</option><option value="pick_test">Pick test</option></select>
+          <label id="jPicksL">picks <input id="jPicks" type="number" value="100" min="1" max="1000" step="1"></label>
+          <label><input id="jOverride" type="checkbox"> start with stale calibration (written in the report)</label></div>
+        <div class="row"><button id="jStart" class="primary">Start</button><button id="jResume">Resume</button>
+          <button id="jAbort">Abort</button></div>
+        <div id="jPause" class="winfo" hidden><b id="jPauseWhy"></b><div id="jPauseTodo" class="sub"></div>
+          <div class="row" id="jNozzle" hidden><button id="jNozzleBtn">Nozzle changed</button></div>
+          <div class="row" id="jHeld" hidden><button data-held="place">The part is on the nozzle: place it</button>
+            <button data-held="repick">The nozzle is empty: pick again</button>
+            <button data-held="drop">Drop it over the tape</button></div></div>
+        <div class="sub" id="jCounts"></div>
+        <div class="row"><a id="jReport" href="#" target="_blank" rel="noopener" hidden>Open the report</a></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card">
+        <h3>Parts</h3>
+        <div class="tablewrap"><table class="parts" id="jParts"></table></div>
+      </div>
+      <div class="card">
+        <h3>Earlier jobs</h3>
+        <ul class="issues" id="jJobs"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ Doctor -->
+<section id="tab-hand" class="tab">
+  <div class="card">
+    <div class="row">
+      <div class="chips" id="hPass"><button data-pass="F" class="on">1 Top SMD</button><button data-pass="B">2 Bottom SMD</button><button data-pass="T">3 THT by hand</button></div>
+      <div class="progress"><div class="bar"><div id="hBar"></div></div><span id="hProg" class="sub"></span></div>
+      <label class="search"><input id="hSearch" type="search" placeholder="Search: ref, value, package, LCSC, MPN, d7 = drawer 7"></label>
+      <button id="hScanBtn" title="S">Scan</button><button id="hDrawersBtn" title="D">Drawers</button>
+      <button id="hFlip" title="F">View: top</button><button id="hImport" class="small" title="Solder Helper's progress in this browser">Import old progress</button>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="col">
+      <div class="card"><div class="tablewrap hlist"><ul id="hList" class="hlist"></ul></div></div>
+    </div>
+    <div class="col">
+      <div class="card"><svg id="hsvg" class="boardview" aria-label="Board, the selected line lit up"></svg>
+        <div id="hCard" class="winfo" hidden></div>
+        <p class="note">Enter = the selected line is placed, next line · Space = placed / not · ↑ ↓ = line · F = flip the view ·
+          S = scan · D = drawers. Parts the machine placed show as done; the machine never places a part you placed.</p></div>
+    </div>
+  </div>
+  <div class="card" id="hScan" hidden>
+    <h3>Find a part <small>an LCSC bag's QR code, an LCSC number, a part number, or a USB / Bluetooth scanner anywhere on the page</small>
+      <button class="small" id="hScanClose">Close</button></h3>
+    <div class="row"><label class="search"><input id="hScanIn" placeholder="C8598 or a part number, Enter"></label>
+      <button id="hCam">Camera</button><select id="hCamSel"></select></div>
+    <div class="row"><video id="hVid" playsinline muted style="max-width:420px;width:100%;border-radius:8px" hidden></video></div>
+    <div id="hScanOut" class="winfo"></div>
+  </div>
+  <div class="card" id="hDrawers" hidden>
+    <h3>Drawers <button class="small" id="hDrawersClose">Close</button></h3>
+    <div class="row"><span class="lbl">Drawers</span><label><input id="hDCount" type="number" min="1" max="999" step="1"></label>
+      <button id="hDCountSet">Set (auto-assign)</button>
+      <button id="hPrintD">Print drawer labels</button><button id="hPrintP">Print part labels</button>
+      <select id="hPrintMode"><option value="strip">one strip, cut marks</option><option value="separate">separate labels</option></select></div>
+    <div id="hDOut" class="sub"></div>
+    <div id="hDList"></div>
+  </div>
+</section>
+
+<section id="tab-doctor" class="tab">
+  <div class="card wide">
+    <h3>Doctor <button id="doctorBtn" class="small">Run again</button></h3>
+    <table class="checks" id="checks"></table>
+  </div>
+</section>
+
+<!-- ============================================================ Settings -->
+<section id="tab-settings" class="tab">
+  <div class="card wide">
+    <h3>Profile <small id="profFile"></small></h3>
+    <p class="note">The program reads this file again by itself when you save it. A file with errors never replaces
+      the running profile. A new port, controller or axis map is used after Connect.</p>
+    <div id="profErrors"></div>
+    <h4>Not known yet (TBD)</h4>
+    <table class="checks" id="tbd"></table>
+    <h4>Capabilities</h4>
+    <table class="checks" id="caps"></table>
+    <h4>The file</h4>
+    <pre id="profText" class="code"></pre>
+  </div>
+  <div class="card wide">
+    <h3>Export / import <small>docs/13 §4.10: one zip with the profile, the bed, the trays, the calibrations, the boards,
+      the parts store and the placed state (never the controller's position)</small></h3>
+    <div class="row"><a href="/api/bundle.zip">Download the bundle</a> · <a href="/api/bundle.zip?photos=true">with the job photos</a>
+      · <a href="/api/events.jsonl">the event log</a></div>
+    <div class="row"><input id="bundleFile" type="file" accept=".zip"><button id="bundleBtn">Import a bundle</button></div>
+    <p class="note">Import keeps what is here in a zip first (data folder, config_history). Restart the program after it.</p>
+  </div>
+</section>
+
+<!-- ============================================================ Logs -->
+<section id="tab-logs" class="tab">
+  <div class="card wide">
+    <h3>Events <small>newest first, the last 200</small></h3>
+    <div class="row"><label><input type="checkbox" id="showDebug"> show details</label></div>
+    <ul class="log" id="log"></ul>
+  </div>
+</section>
+</main>
+
+<div id="help" class="overlay" hidden>
+  <div class="card helpcard">
+    <h3>Keyboard</h3>
+    <table class="keys">
+      <tr><td><kbd>Space</kbd></td><td>STOP</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Jog X / Y (↑ = to the back)</td></tr>
+      <tr><td><kbd>Page Up</kbd> <kbd>Page Down</kbd></td><td>Jog Z up / down</td></tr>
+      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Smaller / bigger X / Y step</td></tr>
+      <tr><td><kbd>{</kbd> <kbd>}</kbd></td><td>Smaller / bigger Z step</td></tr>
+      <tr><td><kbd>h</kbd></td><td>Home</td></tr>
+      <tr><td><kbd>p</kbd></td><td>Pump on / off</td></tr>
+      <tr><td><kbd>1</kbd>…<kbd>9</kbd></td><td>Tabs (on the Hand tab: 1 / 2 / 3 = the passes)</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This list</td></tr>
+    </table>
+    <p class="note">Keys do nothing while you type in a box.</p>
+    <button id="helpClose">Close</button>
+  </div>
+</div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<script src="/static/app.js?v=__V__"></script>
+<script src="/vendor/jsQR.js"></script>
+<script src="/vendor/zxing-reader.js"></script>
+<script src="/static/hand.js?v=__V__"></script>
+</body>
+</html>

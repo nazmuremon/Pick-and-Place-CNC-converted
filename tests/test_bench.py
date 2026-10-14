@@ -8,6 +8,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import bench  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
 
 def test_bench_yaml_maps_to_right_back_up():
@@ -42,14 +43,14 @@ def test_bed_test_run_saves_the_measured_reach(tmp_path, monkeypatch):
     import yaml
     import bed_test_run
     (tmp_path / "config").mkdir()
-    shutil.copy(ROOT / "config" / "bench.yaml", tmp_path / "config" / "bench.yaml")
-    monkeypatch.setattr(bed_test_run, "ROOT", tmp_path)
+    shutil.copy(CONFIG_DIR / "bench.yaml", tmp_path / "config" / "bench.yaml")
+    monkeypatch.setattr(bed_test_run, "BENCH_CONFIG", tmp_path / "config" / "bench.yaml")
     bed_test_run.save_reach(np.array([-150.04, -3.96, -225.0, 2.5]))
     text = (tmp_path / "config" / "bench.yaml").read_text()
     reach = yaml.safe_load(text)["limits"]["reach_from_home"]
     assert reach == {"x": [-150.0, -4.0], "y": [-225.0, 2.5]}
     assert "ESTIMATE" not in text and "# Measured with --measure-reach" in text
-    assert yaml.safe_load(text)["axis_map"] == yaml.safe_load((ROOT / "config" / "bench.yaml").read_text())["axis_map"]
+    assert yaml.safe_load(text)["axis_map"] == yaml.safe_load((CONFIG_DIR / "bench.yaml").read_text())["axis_map"]
 
 
 def test_grabber_reopens_the_camera_after_a_usb_drop(monkeypatch):

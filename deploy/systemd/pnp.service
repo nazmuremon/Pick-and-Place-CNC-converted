@@ -1,0 +1,15 @@
+# The machine program and its page (http://127.0.0.1:8000). A user service: see README.md.
+# For a phone or tablet on the network, add --lan to ExecStart.
+[Unit]
+Description=Pick and place: machine program and page
+After=pnp-portd.service
+Wants=pnp-portd.service
+
+[Service]
+Environment=PNP_SERVICE=1
+ExecStart=%h/.local/bin/pnp serve
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

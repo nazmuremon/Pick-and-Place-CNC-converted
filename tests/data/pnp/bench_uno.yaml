@@ -1,0 +1,135 @@
+# FROZEN TEST COPY of config/profiles/bench_uno.yaml, taken 2026-10-12 for the v2 tests (tests/v2/).
+# Never update it from the calibration tools: the tests expect these values.
+# Machine profile: the PC test bench (docs/13 §4.2). Arduino Uno + CNC shield with our Grbl 1.1h servo build,
+# the Xitech mono camera on the head (tilted ~25°), MG995 270° servo nozzle, pump relay on CoolEn.
+# The values come from config/bench.yaml (the bench tools' file); the comment says where each was measured.
+# null = TBD: the capability that needs it is off, and the page says what is missing.
+# Units: mm, degrees, seconds; feed rates mm/min.
+schema_version: 1
+name: bench_uno
+title: "Test bench: Uno + Grbl 1.1h servo build, Xitech camera, MG995 servo"
+
+controller:
+  type: grbl
+  port: null                  # null = the first USB serial port (/dev/ttyACM0). With the port keeper running
+                              # (`pnp portd`, D22): socket://127.0.0.1:7450, so a restart never resets the Uno
+  baud: 115200
+  poll_s: 0.2
+  watchdog_s: 2.0
+  open_timeout_s: 4.0         # the Uno resets when its port opens and answers after ~1.5 s
+  firmware: "1.1h.20261007"   # our servo build (firmware/README.md): servo commands only on this build
+  # The motors are not on the drivers their names say (found 2026-10-06 with the camera, the owner watching).
+  # +X = head to the right, +Y = head to the back, +Z = up.
+  axis_map:
+    X: {letter: Y, sign: -1}  # Grbl +Y moves the head to the LEFT
+    Y: {letter: Z, sign: 1}   # Grbl +Z (the Z driver) moves the head to the BACK
+    Z: {letter: X, sign: -1}  # Grbl +X moves the camera down
+  expected_settings:          # checked at Connect
+    "$1": "255"               # motors stay powered when idle: no drift (CLAUDE.md)
+    "$22": "0"                # homing off: there are no switches
+    "$30": "2500"             # the status report shows the servo pulse width (firmware/README.md)
+    "$32": "0"                # laser mode off
+  session_token: true
+
+motion:
+  max_feed_xy: 1000           # lowered 2026-10-07 from 2000: heavier head, lost steps on the camera grid run.
+                              # Run the speed test again before raising it
+  max_feed_z: 300             # the bench tools' Z feed; Grbl's $110 for the motor that moves Z is 500
+  jog_feed_not_homed: 300     # slow XY jogs before Home (docs/07 safety rule 1, first guess)
+  max_step_mm: 400            # the largest single move (bench.yaml limits.max_step)
+  z_clearance_mm: 3.0         # bench.yaml nozzle.move_clearance_mm: owner 2026-10-08 "while moving it should lift
+                              # 3 mm" (above the pick / place heights)
+  travel:
+    frame: home               # mm from the HOME label centre (no switches)
+    # Where the camera centre can go. Measured 2026-10-08 (--measure-reach); 2026-10-11: X right end +10 (board
+    # corner at X +5.6), Y from the bed survey of 16:14 (drove to -324.9 and back) and the back end found by stalls.
+    # Not measured again since the camera was re-mounted (2026-10-07): measure it (Setup, step 2).
+    x: [-117.4, 10.0]
+    y: [-324.9, -19.4]
+    z: null                   # TBD: Z travel above the Z reference (the touch-off surface)
+
+homing:
+  method: camera_marker       # the HOME label (bed.yaml markers.home_id) measured in the picture
+
+z_reference:
+  method: touch_off           # no Z switch or probe: the operator touches the nozzle onto a known surface
+
+rotation:
+  type: servo_pwm             # MG995, 270° version, on the spindle pin D11 (D18)
+  servo_pwm:
+    command: "M3 S{us}"       # pulse width in microseconds; the firmware clamps to 500-2500
+    limp: "M5"                # no pulses: servo limp
+    min_us: 500
+    max_us: 2500
+    centre_us: 1500
+    nominal_range_deg: 270    # the 270° version: the nominal 270° over 2000 µs, until the table is measured
+    settle_s: 1.0             # a safe guess, NOT measured yet
+    approach_us: 200          # every angle from a 200 µs shorter pulse first (2026-10-11: ~20° apart from the
+                              # two sides)
+    accuracy_deg: 10          # the same pulse stops up to ±10° apart (ink marks, docs/13 §3.3)
+
+vacuum:
+  type: pump_only             # no valve, no sensor yet (valve later on A4: M7)
+  pump: {start: M8, stop: M9}     # relay on CoolEn (A3). M9 also stops the mist output
+  release_s: 2.5              # wait after the pump stops before lifting (2026-10-08: 1.0 was too short). A guess
+  pick_dwell_s: 0.5           # bench.yaml nozzle.dwell_s: the nozzle stays down this long for a pick or a mark
+
+lights: {}
+
+cameras:
+  head:
+    driver: v4l2
+    device: /dev/v4l/by-id/usb-Xitech_Mono_Camera_20240601105-video-index0
+    resolution: [640, 400]    # the most it gives on Linux (2026-09-30)
+    fourcc: MJPG
+    hardware_id: xitech-mono-tilted-2026-10-07   # re-mounted with the nozzle 2026-10-07, ~25° off vertical
+    moves_with_z: false       # 2026-10-08 Z sweep: the labels keep their size when Z moves
+    tilted: true
+    exposure:
+      auto: false
+      manual_mode: 1
+      value: 84               # Auto exposure in the page, 2026-10-11 (brightest 192, white 0.0 %)
+
+nozzles:
+  change: manual
+  current: N22G
+  items:
+    - id: N22G                # 22G needle (owner, 2026-10-07)
+      od_mm: 0.72
+      packages: []            # not decided yet
+      press_mm: 0.3           # bench.yaml nozzle.press_mm: below the touch for a mark or a pick (docs/08)
+      spring_mm: null         # TBD: how far the spring can be pressed (not measured)
+      offset_guess_mm: [4.97, 29.44]   # ink marks 2026-10-11 at the servo centre (1500 us): where step 5 looks first
+
+estop:
+  type: software              # no E-stop input on the bench
+
+label_printer:
+  type: ptouch
+  model: PT-D410
+
+bed_file: bed.yaml
+
+# The simulator's copy of this machine (`pnp sim --profile bench_uno`). Guesses: nothing real moves.
+sim:
+  hard_ends:                  # the frame's ends: a little beyond the measured reach
+    X: [-122.0, 15.0]
+    Y: [-330.0, -14.0]
+    Z: [0.0, 40.0]            # tip on the bed .. top
+  start: {X: -24.0, Y: -20.5, Z: 20.0}   # bench.yaml nozzle.home_view_mm: HOME, slot 3 and slot 4 in view
+  camera_px_per_mm: 5.3       # labels in the tilted camera (docs/13 §3.2)
+  camera_turn_deg: 3.8        # the raw picture is turned ~3.8° (first bed test run, 2026-10-06)
+  camera:                     # the simulator's real camera (guesses that look like the bench: ~5.3 px/mm, 25°)
+    f_px: 470
+    height_mm: 80
+    tilt_deg: 25
+    tilt_dir_deg: 90
+    turn_deg: 3.8
+    dist: [-0.18, 0.05]
+  servo_play_deg: 10
+  servo_scale: 1.0
+  nozzle_offset_mm: [4.97, 29.44]   # the virtual needle: like the bench (ink marks 2026-10-11)
+  nozzle_runout_mm: 1.56            # the needle is 1.56 mm off the servo axis (bench, 2026-10-11)
+  nozzle_runout_phase_deg: 0.0
+  nozzle_spring_mm: 2.0             # the virtual spring (a guess: nothing real)
+  speed: 4.0

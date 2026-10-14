@@ -1,0 +1,12 @@
+# The port keeper (D22): holds the controller's USB port open, so a restart of the program never resets an Uno.
+# A user service: copy to ~/.config/systemd/user/ (see README.md). Edit the device line for your controller.
+[Unit]
+Description=Pick and place: serial port keeper
+
+[Service]
+ExecStart=%h/.local/bin/pnp portd --device /dev/serial/by-id/CHANGE-ME --listen 127.0.0.1:7450
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

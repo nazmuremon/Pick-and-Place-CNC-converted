@@ -32,12 +32,14 @@ import dry_run_bench as d  # noqa: E402
 import make_labels as ml  # noqa: E402
 import nozzle_calibrate as nc  # noqa: E402
 from bench import load_bench  # noqa: E402
+from pnp_paths import CONFIG_DIR, LOGS_DIR  # noqa: E402
 
-FEEDER_FILE = ROOT / "config" / "feeder.yaml"
-FEEDER_EXAMPLE = ROOT / "config" / "feeder.example.yaml"
-REG_FILE = ROOT / "config" / "board_registration.yaml"
-JOB_FILE = ROOT / "logs" / "job_state.yaml"
-BED_FILE = ROOT / "config" / "bed.yaml"
+FEEDER_FILE = CONFIG_DIR / "feeder.yaml"
+FEEDER_EXAMPLE = CONFIG_DIR / "feeder.example.yaml"
+REG_FILE = CONFIG_DIR / "board_registration.yaml"
+JOB_FILE = LOGS_DIR / "job_state.yaml"
+BED_FILE = CONFIG_DIR / "bed.yaml"
+BENCH_FILE = CONFIG_DIR / "bench.yaml"
 HEIGHT_NAMES = ("part", "place", "move", "paper")
 
 # Bed survey (wide view, camera high): short camera-checked steps; near the front labels even shorter, because
@@ -67,11 +69,27 @@ def best_sightings(sightings: dict[str, list]) -> dict[str, dict]:
     return out
 
 
-def pcb_area_from_labels(pcb: dict[str, np.ndarray], size_mm, marker_mm: float, quiet_mm: float) -> tuple[list, dict]:
+def pcb_area_from_labels(pcb: dict[str, np.ndarray], size_mm, marker_mm: float, quiet_mm: float,
+                         holders: dict | None = None) -> tuple[list, dict]:
     """The board area between the 4 PCB corner labels (PCB 1 front-left, 2 front-right, 3 back-right, 4 back-left):
     the board centred between the marker centres. Returns the front-left corner (mm from HOME) and the gaps from
-    each board edge to the nearest label edge (to check the labels against the board)."""
+    each board edge to the nearest label edge (to check the labels against the board).
+    With the 3D printed corner pieces (hardware/tray/pcb_corner.py, bed.yaml pcb_area.corner_holders) the board
+    lies in the back-left L instead: left edge = the left markers + left_arm_mm, back edge = the back markers +
+    edge_mm. The gaps then say how far the right arm's end and the front marks are from the board's edges."""
     p = {i: np.asarray(pcb[f"pcb_{i}"], float) for i in range(1, 5)}
+    if holders:
+        w, h = float(size_mm[0]), float(size_mm[1])
+        edge = float(holders["edge_mm"])
+        left = float(p[1][0] + p[4][0]) / 2 + float(holders["left_arm_mm"])
+        back = float(p[3][1] + p[4][1]) / 2 + edge
+        right_mark = float(p[2][0] + p[3][0]) / 2 - float(holders["right_arm_mm"])
+        front_mark = float(p[1][1] + p[2][1]) / 2 + edge
+        info = {"by": "corner pieces (board in the back-left L)",
+                "gap_x_mm": round(right_mark - (left + w), 1),    # + = room at the right edge
+                "gap_y_mm": round((back - h) - front_mark, 1),    # + = the front marks are in front of the board
+                "square_deg": round(float(np.degrees(np.arctan2((p[3] - p[4])[1], (p[3] - p[4])[0]))), 2)}
+        return [round(left, 1), round(back - h, 1)], info
     left, right = (p[1][0] + p[4][0]) / 2, (p[2][0] + p[3][0]) / 2
     front, back = (p[1][1] + p[2][1]) / 2, (p[3][1] + p[4][1]) / 2
     w, h = float(size_mm[0]), float(size_mm[1])
@@ -592,10 +610,13 @@ class PnPMachine(nc.NozzleCal):
         """The nozzle tip is ON a part in a slot (the pick spot). The camera doesn't move with Z, so Z can't be
         checked by the label size: the pick spot is the Z reference, kept in Grbl's own step count. Z0 = the
         moving height = nozzle.place_above_pick_mm + nozzle.move_clearance_mm above the pick spot. The pick, place
-        and moving heights are set from it; the part stays in its pocket (pump off)."""
+        and moving heights are set from it; the part stays in its pocket (pump off). Parts in the 3D printed trays
+        sit higher than the board: bed.yaml feed_tray.tape_floor_mm is taken off the place height."""
         mark = self.pick_mark
         nz = load_bench()["nozzle"]
-        gap, press, place_up = float(nz["move_clearance_mm"]), float(nz["press_mm"]), float(nz["place_above_pick_mm"])
+        floor = float((self.bed.get("feed_tray") or {}).get("tape_floor_mm", 0.0))
+        gap, press = float(nz["move_clearance_mm"]), float(nz["press_mm"])
+        place_up = float(nz["place_above_pick_mm"]) - floor
         up = max(0.0, place_up) + gap
         self.z_locked = None                          # the owner put the tip on the part: Z is known
         if hasattr(self.grbl, "reset_seen"):
@@ -626,7 +647,8 @@ class PnPMachine(nc.NozzleCal):
                                            "(the camera does not move with Z)"}
         stamp = {"ref": ref, "by": "pick spot (nozzle tip on a part)", "date": ref}
         self.cal["touch_part"] = {"z": round(-up + press, 3), **stamp}   # the pick goes press_mm below: the spot
-        self.cal["touch_place"] = {"z": round(-up + place_up, 3), **stamp, "note": "pick spot + nozzle.place_above_pick_mm"}
+        self.cal["touch_place"] = {"z": round(-up + place_up, 3), **stamp,
+                                   "note": "pick spot + nozzle.place_above_pick_mm - feed_tray.tape_floor_mm"}
         self.cal["touch_move"] = {"z": 0.0, **stamp}
         nc.save_cal(self.cal)
         self.land = {"surface": "part", "head": np.asarray(mark["xy"], float)}
@@ -873,7 +895,8 @@ class PnPMachine(nc.NozzleCal):
         area, info = (None, {})
         if len(pcb) == 4:
             area, info = pcb_area_from_labels(pcb, self.bed["pcb_area"]["size_mm"], float(self.markers.size_mm),
-                                              float(self.bed["markers"].get("quiet_mm", 2.5)))
+                                              float(self.bed["markers"].get("quiet_mm", 2.5)),
+                                              self.bed["pcb_area"].get("corner_holders"))
         e = self.extremes
         data = {"date": stamp, "note": "marker centres in mm from HOME (+X right, +Y back), camera high, wide view",
                 "camera_px_per_mm_matrix": np.round(self.J, 3).tolist(),
@@ -1427,7 +1450,7 @@ class PnPMachine(nc.NozzleCal):
         self.cam.set_control("AUTO_EXPOSURE", 1.0)
         self.cam.set_control("EXPOSURE", round(float(value)))
         light = self.picture_light()
-        path = ROOT / "config" / "bench.yaml"
+        path = BENCH_FILE
         text = re.sub(r"(?m)^(  exposure: )\d+(.*)$", rf"\g<1>{round(float(value))}  # set by hand", path.read_text())
         path.write_text(text)
         self.say(f"Exposure {round(float(value))}: bright 5 % at {light['p995']:.0f}, median {light['median']:.0f}, "
@@ -1471,7 +1494,7 @@ class PnPMachine(nc.NozzleCal):
         best = round(best)
         self.cam.set_control("EXPOSURE", best)
         light = self.picture_light()
-        path = ROOT / "config" / "bench.yaml"
+        path = BENCH_FILE
         text = path.read_text()
         block = (f"camera:\n  manual_mode: 1        # V4L2 auto exposure off (1 = manual): the brightness must not change\n"
                  f"  exposure: {best}        # set by the page's Auto exposure {datetime.date.today().isoformat()} "

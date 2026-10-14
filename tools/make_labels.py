@@ -29,8 +29,10 @@ import cv2
 import numpy as np
 import yaml
 
+from pnp_paths import CONFIG_DIR
+
 ROOT = Path(__file__).resolve().parents[1]
-BED_CONFIG = ROOT / "config" / "bed.yaml"
+BED_CONFIG = CONFIG_DIR / "bed.yaml"
 OUT_DIR = ROOT / "hardware" / "print"
 PDF_NAME = "bed_labels_a4.pdf"
 PTOUCH = shutil.which("ptouch-print") or "/usr/local/bin/ptouch-print"
@@ -374,7 +376,7 @@ def front_line_l(bed: dict, labels: dict[str, Label]) -> float:
 
 def reach_box() -> tuple[tuple[float, float], tuple[float, float]] | None:
     """The measured camera reach in mm from HOME (config/bench.yaml), if there is one."""
-    path = ROOT / "config" / "bench.yaml"
+    path = CONFIG_DIR / "bench.yaml"
     if not path.exists():
         return None
     r = yaml.safe_load(path.read_text()).get("limits", {}).get("reach_from_home")

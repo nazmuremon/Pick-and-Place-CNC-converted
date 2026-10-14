@@ -1,0 +1,105 @@
+# Machine profile: the planned machine, Raspberry Pi 5 + Pico running grblHAL (D1, docs/04-electrical.md).
+# Nothing of this is built yet: most numbers are TBD (null). Values come from config/machine.example.yaml.
+# Units: mm, degrees, seconds; feed rates mm/min.
+schema_version: 1
+name: pico_grblhal
+title: "Planned machine: Pi 5 + Pico grblHAL (not built yet)"
+
+controller:
+  type: grblhal
+  port: /dev/ttyACM0          # Pico USB CDC
+  baud: 115200
+  poll_s: 0.15
+  watchdog_s: 2.0
+  firmware: null              # any grblHAL build (the build options go into firmware/)
+  axis_map:                   # $3 (direction invert) makes the axes point the right way: no swaps
+    X: {letter: X, sign: 1}
+    Y: {letter: Y, sign: 1}
+    Z: {letter: Z, sign: 1}
+  expected_settings:
+    "$1": "255"               # motors stay powered when idle
+    "$20": "0"                # soft limits, hard limits and homing off in grblHAL: the app does them (docs/07)
+    "$21": "0"
+    "$22": "0"
+  session_token: true
+
+motion:
+  max_feed_xy: 6000           # machine.example.yaml: tune in phase 1
+  max_feed_z: 1200
+  jog_feed_not_homed: 300
+  max_step_mm: 400            # the bench's cap; check when the machine runs
+  travel:
+    frame: home
+    x: null                   # TBD (Q1)
+    y: null
+    z: null
+
+homing:
+  method: camera_marker       # 3 Pico inputs are kept free for switches later (D4)
+
+z_reference:
+  method: touch_off
+
+rotation:
+  type: servo_pwm             # the same MG995 on grblHAL's spindle PWM at 50 Hz: to be checked (D18)
+  servo_pwm:
+    command: "M3 S{us}"
+    limp: "M5"
+    min_us: 500
+    max_us: 2500
+    centre_us: 1500
+    nominal_range_deg: 270
+    settle_s: null            # TBD: measured
+    approach_us: 200
+    accuracy_deg: null
+
+vacuum:
+  type: pump_valve            # D3: pump on flood, 3/2 valve on mist
+  pump: {start: M8, stop: M9}
+  valve: {start: M7, stop: M9}    # M9 also stops the pump: send M8 again after a place
+  release_s: null
+
+lights:
+  head: {via: gpio, gpio_pin: 12}     # machine.example.yaml: LED ring, hardware PWM through a MOSFET
+  bottom: {via: gpio, gpio_pin: 13}
+
+cameras:
+  head:
+    driver: v4l2
+    device: /dev/video0
+    resolution: [1920, 1080]
+    hardware_id: head-tbd
+    moves_with_z: null        # TBD: the head is not designed yet (step 2.1)
+    tilted: null
+    exposure: {auto: false, manual_mode: 1, value: null}
+  bottom:
+    driver: picamera2
+    device: "0"
+    resolution: [2304, 1296]
+    hardware_id: bottom-tbd
+    moves_with_z: false
+    tilted: false
+
+nozzles:
+  change: manual
+  current: N2
+  items:
+    - {id: N1, od_mm: 0.72}   # 22G
+    - {id: N2, od_mm: 0.91}   # 20G
+    - {id: N3, od_mm: 1.65}   # 16G
+    - {id: N4, od_mm: 2.11}   # 14G
+
+estop:
+  type: controller_input      # E-stop pole 2 into the Pico (docs/04)
+
+label_printer:
+  type: ptouch
+  model: PT-D410
+
+bed_file: bed.yaml
+
+sim:
+  hard_ends: {X: [-160.0, 0.0], Y: [-230.0, 5.0], Z: [0.0, 40.0]}
+  start: {X: -30.0, Y: -20.0, Z: 20.0}
+  camera_px_per_mm: 25.0
+  servo_play_deg: 1.0

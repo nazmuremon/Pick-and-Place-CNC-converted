@@ -1,0 +1,63 @@
+# FROZEN TEST COPY of config/feeder.example.yaml, taken 2026-10-12. Only the tests read it (tests/conftest.py copies it to
+# a temporary folder for every test run). Never update it from the calibration tools or by copying the live
+# file again: change a value here only together with the test that needs it.
+# Feed tray configuration: EXAMPLE. Copy it to feeder.yaml. See docs/05-feed-tray.md.
+# The feed tray = 5 slot labels on the bed (labels 3-7, D17), loaded by hand (D11). The labels themselves
+# (marker IDs, zone size, where they sit) are in config/bed.yaml. This file says what goes in each
+# slot, and the package data the camera checks against. Units: mm.
+
+# What is in each slot: one value + footprint line per slot. The planner fills this for every load
+# (a load = up to 5 lines: slots 3-7, D17). The example below is for bench tests only.
+slots:
+  3: {value: "0.1uF", footprint: C_0805_2012Metric, qty: 13}
+  4: {value: "10uF",  footprint: C_0805_2012Metric, qty: 9}
+  5: {value: "1k",    footprint: R_0805_2012Metric, qty: 9}
+
+detection:
+  size_tolerance: 0.20      # a part's length and width must be within +-20 % of body_mm
+  # Parts closer than this to another part are "unclear" (never picked). In tape the pocket wall
+  # separates the parts: a 2512 at 4 mm pitch leaves only 0.8 mm. Tune in step 4.4.
+  min_gap_mm: 0.5
+
+# Nominal body sizes. Check the datasheet of the part you actually use.
+# Parts come in a cut-tape strip (film removed by hand), laid in the slot mark with the holes to the
+# back. tape_mm / pitch_mm tell the camera where the next pocket is. The slot mark fits 8 and 12 mm tape.
+# Polarized parts: the camera still checks the polarity rule (docs/06-vision.md 4.3).
+# angle_in_tape = the part's 0° direction (as in its KiCad footprint) relative to the slot direction,
+# with the holes to the back. Measure it on your first strip of each polarized package; null = not yet.
+# If the rule can't decide, the part is "unclear" and is skipped: never guess.
+# Calibration step 8 (docs/08-calibration.md) adds pick_z_offset (mm) to each package.
+packages:
+  R_0603:    {body_mm: [1.6, 0.8],  height_mm: 0.45, nozzle: N1, tape_mm: 8,  pitch_mm: 4, polarized: false}
+  C_0603:    {body_mm: [1.6, 0.8],  height_mm: 0.8,  nozzle: N1, tape_mm: 8,  pitch_mm: 4, polarized: false}
+  R_0805:    {body_mm: [2.0, 1.25], height_mm: 0.5,  nozzle: N2, tape_mm: 8,  pitch_mm: 4, polarized: false}
+  C_0805:    {body_mm: [2.0, 1.25], height_mm: 1.25, nozzle: N2, tape_mm: 8,  pitch_mm: 4, polarized: false}
+  R_1206:    {body_mm: [3.2, 1.6],  height_mm: 0.55, nozzle: N2, tape_mm: 8,  pitch_mm: 4, polarized: false}
+  R_2512:    {body_mm: [6.3, 3.2],  height_mm: 0.55, nozzle: N3, tape_mm: 12, pitch_mm: 4, polarized: false}
+  XTAL_3215: {body_mm: [3.2, 1.5],  height_mm: 0.9,  nozzle: N2, tape_mm: 8,  pitch_mm: 4, polarized: false}
+  SOD-123:   {body_mm: [2.7, 1.6],  height_mm: 1.1,  nozzle: N2, tape_mm: 8,  pitch_mm: 4, polarized: true, polarity: cathode_band, angle_in_tape: null}
+  SMA:       {body_mm: [4.3, 2.6],  height_mm: 2.2,  nozzle: N3, tape_mm: 12, pitch_mm: 4, polarized: true, polarity: cathode_band, angle_in_tape: null}
+  SOT-23:    {body_mm: [2.9, 1.3],  height_mm: 1.0,  nozzle: N2, tape_mm: 8,  pitch_mm: 4, polarized: true, polarity: lead_count,   angle_in_tape: null}
+  SOT-23-6:  {body_mm: [2.9, 1.6],  height_mm: 1.1,  nozzle: N2, tape_mm: 8,  pitch_mm: 4, polarized: true, polarity: pin1_mark,    angle_in_tape: null}   # small mark: may be unclear
+  SOT-89:    {body_mm: [4.5, 2.5],  height_mm: 1.5,  nozzle: N3, tape_mm: 12, pitch_mm: 8, polarized: true, polarity: tab,          angle_in_tape: null}
+
+# KiCad footprint name -> package. Map by body size, not by the R_/C_/D_ prefix.
+footprint_map:
+  R_0603_1608Metric: R_0603
+  C_0603_1608Metric: C_0603
+  R_0805_2012Metric: R_0805
+  C_0805_2012Metric: C_0805
+  D_0805_2012Metric: C_0805          # the HT5023 board uses this footprint for capacitors
+  R_1206_3216Metric: R_1206
+  R_2512_6332Metric: R_2512
+  CRYSTAL-SMD_L3.2-W1.5: XTAL_3215
+  D_SOD-123: SOD-123
+  D_SMA: SMA
+  SMA_L4.4-W2.8-LS5.4-RD: SMA
+  1N4007_SMD: SMA                    # assumed M7 in SMA. Check the real part
+  SOT-23: SOT-23
+  SOT-23-3: SOT-23
+  SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BL: SOT-23-6
+  SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BR: SOT-23-6
+  SOT-89-3: SOT-89
+  # Footprints not listed here go to the manual (hand-placed) list.

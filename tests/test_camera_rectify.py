@@ -13,8 +13,9 @@ import bed_test_run as t  # noqa: E402
 import camera_rectify as cr  # noqa: E402
 import camera_square_check as csc  # noqa: E402
 import make_labels as ml  # noqa: E402
+from pnp_paths import CONFIG_DIR  # noqa: E402  (the frozen test copy, tests/conftest.py)
 
-CFG = yaml.safe_load((ROOT / "config" / "bench.yaml").read_text())["camera_rectify"]
+CFG = yaml.safe_load((CONFIG_DIR / "bench.yaml").read_text())["camera_rectify"]
 SIZE = (640, 400)
 PX_MM = 20                        # the simulated bed picture
 BED_X, BED_Y = (-110.0, 30.0), (-45.0, 25.0)

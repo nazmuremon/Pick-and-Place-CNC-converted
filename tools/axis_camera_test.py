@@ -34,10 +34,11 @@ import cv2
 import numpy as np
 
 from bench import Grabber, Grbl, GrblError
+from pnp_paths import LOGS_DIR
 from smd_identify import DEFAULT_CAMERA, DEFAULT_CONFIG, load_config, marker_positions_mm
 
 ROOT = Path(__file__).resolve().parents[1]
-LOG_DIR = ROOT / "logs" / "axis_test"
+LOG_DIR = LOGS_DIR / "axis_test"
 
 SETTLE_S = 0.15         # wait after the axis stops, before using frames (stale frame rule)
 FRAMES_PER_MEASURE = 5

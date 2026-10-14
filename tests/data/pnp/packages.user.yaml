@@ -1,0 +1,11 @@
+# FROZEN TEST COPY of config/packages.user.yaml, taken 2026-10-12 for the v2 tests (tests/v2/).
+# Never update it from the program: the tests expect these values.
+# Your own package names (docs/13 §4.4). Read before config/packages.yaml.
+# aliases: footprint names from your own library that are one of the shipped packages.
+schema_version: 1
+aliases:
+  1N4007_SMD: SMA                   # HT5023 D7, D13, D14, D17: 1N4007 in DO-214AC (M7)
+  LNK3206D-TL: SO-8C                # HT5023 F1: Power Integrations LinkSwitch, SO-8C
+  EL817S1(B)(TU)-F: SOP-4-opto      # HT5023 U15, U20, U21
+  LTV-816S-TA1-D: SOP-4-opto        # HT5023 U5
+packages: {}

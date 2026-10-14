@@ -1,5 +1,7 @@
 # 06 – Vision
 
+> **v2 (2026-10-12, Phase C):** `src/pnp/vision/` replaces the bench vision with one camera model (D28), parts by an operator-confirmed template (D29), registration on holes and corners (D30) and the stall check from the model (D31). How to use it: [07-software.md](07-software.md#software-v2-srcpnp). This page stays the background for the bench tools.
+
 ## 1. Cameras and lighting
 
 | | Top camera | Bottom camera |

@@ -42,13 +42,14 @@ import numpy as np
 import yaml
 
 import make_labels as ml
-from bench import Grabber, Grbl, GrblError, load_bench, mark_parked, was_parked
+from bench import BENCH_CONFIG, Grabber, Grbl, GrblError, load_bench, mark_parked, was_parked
+from pnp_paths import LOGS_DIR
 from smd_identify import DEFAULT_CAMERA
 
 ROOT = Path(__file__).resolve().parents[1]
-LOG_DIR = ROOT / "logs" / "test_run"
-POSITION_FILE = ROOT / "logs" / "head_position.yaml"   # where the head was last, in mm from HOME
-CAMERA_FILE = ROOT / "logs" / "camera_calibration.yaml"   # the last good camera calibration (px per mm)
+LOG_DIR = LOGS_DIR / "test_run"
+POSITION_FILE = LOGS_DIR / "head_position.yaml"   # where the head was last, in mm from HOME
+CAMERA_FILE = LOGS_DIR / "camera_calibration.yaml"   # the last good camera calibration (px per mm)
 WINDOW = "Bed test run"
 FEED = 300.0                 # mm/min (bench cap)
 SETTLE_S = 0.25
@@ -702,7 +703,7 @@ def draw(frame: np.ndarray, found: dict, machine: Machine, step: float) -> np.nd
 
 def save_reach(extremes: np.ndarray) -> None:
     """Write the measured reach into config/bench.yaml (keeps the comments)."""
-    path = ROOT / "config" / "bench.yaml"
+    path = BENCH_CONFIG
     left, right, front, back = (float(round(v, 1)) for v in extremes)
     text = path.read_text()
     text = re.sub(r"(reach_from_home:\n\s+x: )\[[^\]]*\]", rf"\g<1>[{left:g}, {right:g}]", text)

@@ -11,7 +11,124 @@
 | Nozzle servo | MG995 servo on the spindle PWM output of the motion controller: no second board (D18). The angle goes through G-code: `M3 S<us>` = pulse width in microseconds. Bench: our Grbl 1.1h servo build ([../firmware/README.md](../firmware/README.md)). grblHAL: spindle PWM at 50 Hz, planned (to be checked when there is a Pico) |
 | Job export | KiCad's Python (`pcbnew`), run on the PC that has KiCad, like `../solder_helper/extract_board.py` |
 
-## Planned source layout
+## Software v2: `src/pnp/`
+
+(docs/13; Phases A–F built 2026-10-12, G 2026-10-14; simulated, not yet run on the bench)
+
+The universal program of [13-build-prompt-v2.md](13-build-prompt-v2.md) is being built phase by phase. Phases A
+(the base), B (boards) and C (vision) are done; the bench tools and `ui/app.py` stay in use until Phases B–E replace them (D24).
+
+**Run it** (from this folder; `pip install -e .` makes it a `pnp` command):
+
+```
+PYTHONPATH=src .venv/bin/python -m pnp sim --profile bench_uno --open   # the page against the SIMULATOR
+PYTHONPATH=src .venv/bin/python -m pnp serve --profile bench_uno         # the real bench (close ui/app.py first!)
+PYTHONPATH=src .venv/bin/python -m pnp doctor                            # the checks in the terminal
+PYTHONPATH=src .venv/bin/python -m pnp profile check bench_uno           # is the profile valid, what is TBD
+PYTHONPATH=src .venv/bin/python -m pnp portd                             # the port keeper (D22)
+```
+The page is http://127.0.0.1:8000. The profile is remembered (`var/active_profile.txt`). Service files:
+[../deploy/systemd/README.md](../deploy/systemd/README.md).
+
+**Code layout** (docs/13 §7):
+
+| Package | What is in it now |
+|---|---|
+| `profile/` | the machine profile schema (`schema.py`), loading with errors by field and line, migrations, the TBD list (`check.py`), the reload watcher |
+| `motion/` | `grbl.py` (the line protocol, status poll, watchdog, reset / ALARM events), `controller.py` (machine axes, jog `$J=`, the session token, D22), `axes.py`, `limits.py` (travel, step and feed caps), `state.py` (the ONE lock state), `transport.py` (open without a reset), `portd.py` |
+| `capabilities/` | the interfaces of docs/13 §4.14 and their versions: homing (manual, switches, camera on the HOME marker), Z reference (touch-off, probe), rotation (servo M3 S, stepper axis), vacuum (pump, valve), lights, cameras (V4L2), E-stop; the later ones say which phase builds them |
+| `sim/` | a virtual Grbl / grblHAL that speaks the real protocol (lost steps at the frame's ends, resets, servo play, probe, switches, E-stop) and a camera that draws the bed from `bed.yaml` |
+| `machine.py` | the machine process: owns the controller and cameras, runs one operation at a time, events (`var/events.jsonl`), the session (`var/session.yaml`) |
+| `ui/` | FastAPI: the page, `/ws` (status 5 per second + events), `/api/action/<name>`, `/video`; requests from other sites are refused |
+| `board/` | Phase B: the Board model (`model.py`), importers `kicad.py` (+ `sexpr.py`), `gerber.py` + `gerber_import.py` (X2 / X3, Excellon), `centroid.py`; `checks.py`; `service.py` (import sessions, saved boards in `var/boards/`, the preview) |
+| `feeders/packages.py` | the package library (`config/packages.yaml` + `packages.user.yaml`) and the part classes |
+| `vision/` | Phase C: `camera_model.py` (D28), `charuco.py` (the sheet, its PDF, the finder), `calibrate.py` (the joint fit), `markers.py` (bed labels through the model, HOME offset), `exposure.py`, `parts.py` (strips, D29), `features.py` (holes, corners), `register.py` (D30), `motion_check.py` (stall check, D31) |
+| `calibration/store.py` | every calibration result with its inputs, method, quality and date (`var/calibration_sim.yaml` in the simulator) |
+| `machine_vision.py` | the machine's vision operations: calibrate, camera homing, exposure, click on the picture, registration, the overlay, the stall check |
+| `job/dryrun.py` | Phase C: the camera-only dry run (pick = the camera over the next full pocket, place = over its pads) |
+| `calibration/` | Phase D: `chain.py` (what every result depends on), `store.py` (with Undo), `wizard.py` (the steps), `nozzle.py` (offset, runout, angle table from ink marks), `heights.py` (derived heights) |
+| `machine_setup.py` | the wizard's procedures: travel creep, ink marks, pointer by eye, angle table, bed survey, first part |
+| `job/pickplace.py` | pick one part (pocket check) and place it (place check, `vision/placecheck.py`); the Z-down rules |
+| `sim/nozzle.py` | the simulated needle: offset, runout, spring, ink marks, picking and placing parts |
+| `feeders/bank.py`, `loads.py`, `traygen.py` | Phase E: the trays as a list, markers, the load split, the printed holder generator |
+| `job/planner.py`, `runner.py`, `report.py`, `machine_job.py` | Phase E: the plan, the runner (states, STOP, resume, refill), reports, the shared placed state |
+| `store/`, `machine_store.py`, `ui/static/hand.js` | Phase E2: the parts store (drawers, bag scans, labels) and the Hand tab (Solder Helper merged) |
+| `bundle.py`, `firstrun.py`, `data/` | Phase F: export / import, `pnp init`, the defaults shipped in the package |
+| `store/` | empty: Phase E2 |
+
+**Frames in v2 (D23):** the head's reference point is the camera centre; X / Y in mm from HOME (or the
+controller's frame with switches); **Z = the nozzle tip's height above the Z reference surface, up = +**.
+
+**Boards (Phase B, D26, D27):** import in the Board tab (upload, then "Use this board") or with
+`pnp import FILE... --save`. What can be imported:
+
+| Files | How it is read |
+|---|---|
+| `.kicad_pcb` (or `.kicad_pcb.gz`) | everything: outline, parts, pads, holes, thickness |
+| Gerbers + X3 position files (`*-top-pos.gbr`, `*-bottom-pos.gbr`, KiCad: Fabrication outputs > Component placement, Gerber) + drill + job file; a `.zip` is fine | parts from X3, pads from the copper layers, holes from the drill files, thickness from the job file |
+| a centroid file (`.csv .pos .txt .mnt/.mnb`) | the placements; outline and pads from the Gerbers of the same import or the current board. Origin, units, Y direction, bottom X sign and the rotation rules are fitted to that reference and shown; without a reference the operator sets them |
+
+Board frame: mm, X right, Y up, origin = the outline box's bottom-left, seen from the top. A part's angle is
+CCW **seen from its own side**; the bottom view is the board turned over left-right. KiCad bottom parts:
+180° − KiCad's angle (D10, checked by pin 1 in software). The preview shows every part coloured by what happens
+to it (machine, bottom camera, by hand, through-hole, pad only, mounting hole, unknown) and the checks (centre on
+its pads, pads along the angle, pin 1 where the footprint puts it).
+
+**Vision (Phase C, D28–D31):**
+
+1. *Camera calibration* (Setup tab, step 3): print `/charuco.pdf` at 100 % (both 100 mm bars = 100.0 mm), lay
+   one sheet flat where the head has 25 mm room left / right and 15 mm front / back, press **Sheet on the bed**
+   (9 pictures), put it on a block measured with a caliper, **Sheet on the block**, take it away, **Solve and
+   save**. The report gives the lens, the tilt, the camera height, px/mm and the head-move scale. A scale more
+   than 3 % from 1 (lost steps, the sheet moved) is not saved. Calibrate again when the camera, its lens or its
+   mount changes (change `cameras.head.hardware_id`: the old result is then not used).
+2. *Exposure* (Machine tab, **Find and lock**): found once with the lights on, then fixed.
+3. *Homing* on the HOME marker through the model (corners averaged over several pictures).
+4. *Board registration* (Board tab): choose the side up and where the board's top edge points, **Register**. The
+   head looks at each hole and square outline corner it can reach (first within 6 mm of the plan, then 2 mm),
+   fits turn + shift, drops an odd feature, and reports each feature's residual. Then the Machine tab draws the
+   pads (green), the holes (blue) and the outline (yellow) on the live picture: they must sit on the board.
+5. *Click on the picture* = bring that spot to the red cross (on the registered board: at the board's height).
+6. *Parts in a strip*: the first part of each slot is shown to the operator to confirm; its picture is the
+   slot's template (D29).
+7. *Stall check*: every automatic move compares the picture with what the camera model predicts (D31).
+
+Simulator props (Machine tab, Simulator card): the calibration sheet on the bed or on a 5 mm block, the HT5023
+bottom up or top up in the board area, a tape strip in slot 3.
+
+**The set-up wizard (Phase D, D32–D35)** is the Setup tab: 10 steps in order, each with its status (valid /
+stale / missing, why, when), what you do, what the machine does, when it is done, its buttons and Undo. A step
+greys out until the steps it needs are valid. Results are saved with what they were made from (the camera id, the
+nozzle, the dates of the results they used): calibrate the camera again and the nozzle offset, the survey and the
+angle table become stale. Heights are worked out, never typed: pick = part top − press, place = board top + part −
+press, moving = the highest thing + the part + clearance (`press_mm`, `z_clearance_mm` in the profile). Z goes
+down by itself only when homed, with Z set, a valid nozzle offset, and the tip over a tray's zone, the
+registered board or the mark sheet; X / Y never move with the nozzle low. The close-up on the right of the Setup
+tab shows the picture around the tip (the blue ring) for the touch-off.
+
+**Jobs, trays, hand assembly (Phases E, E2, F; D36–D41).** User guide: [user/install.md](user/install.md),
+[user/first-run.md](user/first-run.md), [user/loading-and-jobs.md](user/loading-and-jobs.md),
+[user/locks.md](user/locks.md). Builder guide: [builder/profiles.md](builder/profiles.md),
+[builder/calibration.md](builder/calibration.md), [builder/extending.md](builder/extending.md),
+[builder/upgrades.md](builder/upgrades.md). Job folders: `var/jobs/<board>/<time>/` (state.json, photos, report.html);
+the parts store: `var/store.json`; what the trays hold: `var/feeder_state.json`; the placed state:
+`var/boards/<board>/placed.json`.
+
+**Locks (one state, `motion/state.py`):**
+
+| Mode | Allowed | Way out |
+|---|---|---|
+| disconnected | nothing | Connect |
+| locked (reset, ALARM, E-stop, stall, link lost) | Z up, pump, lights | ALARM / E-stop: Unlock alarm. Then "Nozzle is clear" (after lifting it), then Home and set Z |
+| not homed | slow X / Y jogs (`jog_feed_not_homed`), Z jogs, turn, pump, Home, set Z | Home |
+| homed | jogs and go-to inside the travel, at full speed | — |
+
+Automatic Z-down moves are refused until the heights exist (Phase D). Tests: `tests/v2/` (simulator, no
+hardware, frozen profile `tests/data/pnp/bench_uno.yaml`).
+
+## Planned source layout (2026-09, before v2)
+
+The v1 plan. v2 follows docs/13 §7 instead (above).
 
 ```
 pick_and_place_robot/

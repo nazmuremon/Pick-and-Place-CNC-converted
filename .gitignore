@@ -6,6 +6,9 @@ __pycache__/
 
 # results of the bench tools (pictures, reports, machine state)
 logs/
+# v2: session state, events, the chosen profile (src/pnp/paths.py)
+var/
+*.egg-info/
 
 # local copies that are not part of the project
 config/machine.yaml

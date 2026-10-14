@@ -38,10 +38,11 @@ import yaml
 
 import smd_identify as si
 from bench import Grabber, Grbl, GrblError, load_bench, sharpness
+from pnp_paths import LOGS_DIR
 
 ROOT = Path(__file__).resolve().parents[1]
-LOG_DIR = ROOT / "logs" / "zoom_identify"
-STATE_FILE = ROOT / "logs" / "bench_state.yaml"
+LOG_DIR = LOGS_DIR / "zoom_identify"
+STATE_FILE = LOGS_DIR / "bench_state.yaml"
 WINDOW = "Zoom identify"
 SETTLE_S = 0.3
 
